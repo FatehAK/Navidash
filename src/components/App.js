@@ -23,9 +23,9 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        // Connect the initMap() function within this class to the global window context,
+        //connect the initMap() function within this class to the global context
         window.initMap = this.initMap;
-        // Asynchronously load the Google Maps script, passing in the callback reference
+        //load the maps script asynchronously and give reference to the global callback
         const ref = document.getElementsByTagName("script")[0];
         const script = document.createElement("script");
         script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDuqhcnldSASlaMVsvLvMc8DRewy0FzX4o&libraries=places,drawing,geometry&v=3&callback=initMap';
@@ -49,16 +49,34 @@ class App extends React.Component {
             if (status === google.maps.GeocoderStatus.OK) {
                 myMap.setCenter(results[0].geometry.location);
             } else {
-                alert('Could not find location');
+                alert('Location not found');
             }
         });
 
-        //>>Drawing
+        //for initial zoom functionality
+        const zoomAutoComplete = new google.maps.places.Autocomplete(document.querySelector('.address-input'));
+        zoomAutoComplete.setComponentRestrictions({ country: ['IN'] });
+
+        const zoomBtn = document.querySelector('.zoom');
+        zoomBtn.addEventListener('click', function() {
+            self.zoomToArea();
+        });
+
+        zoomAutoComplete.addListener('place_changed', function() {
+            const place = this.getPlace();
+            if (!place.geometry) {
+                alert("Location not found");
+            }
+            else {
+                myMap.setCenter(place.geometry.location);
+                myMap.setZoom(14);
+            }
+        });
+
         //for drawing polylines on the map
         const drawingManager = new google.maps.drawing.DrawingManager({
             drawingMode: google.maps.drawing.OverlayType.POLYGON,
             drawingControl: true,
-            //the drawing buttons
             drawingControlOptions: {
                 position: google.maps.ControlPosition.TOP_LEFT,
                 drawingModes: [
@@ -67,7 +85,6 @@ class App extends React.Component {
             }
         });
 
-        //for drawing functionality
         const drawBtn = document.querySelector('.draw-btn');
         drawBtn.addEventListener('click', function() {
 
@@ -99,17 +116,9 @@ class App extends React.Component {
             }
         });
 
-        //>>Place Search
+        //places search on btn click
         const searchBtn = document.querySelector('.search-btn');
         searchBtn.addEventListener('click', self.textSearchPlaces);
-
-        //>>Intial Zoom
-        const zoomAutoComplete = new google.maps.places.Autocomplete(document.querySelector('.address-input'));
-        //for zoom functionality
-        const zoomBtn = document.querySelector('.zoom');
-        zoomBtn.addEventListener('click', function() {
-            self.zoomToArea();
-        });
     }
 
     //geocode and zoom to address
@@ -187,7 +196,7 @@ class App extends React.Component {
         }
     }
 
-    //function that creates markers for each place found in either places search
+    //function that creates markers for each place found in places search
     createMarkersForPlaces(places) {
         //set marker bounds
         let bounds = new google.maps.LatLngBounds();
