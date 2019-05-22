@@ -3,4 +3,28 @@ body {
     height: 100%;
     margin: 0;
     padding: 0;
+    overflow: hidden;
+}
+
+.container {
+    height: 100%;
+}
+
+.heading {
+    text-align: center;
+    background: rgb(230, 230, 230);
+}
+
+.main {
+    display: flex;
+    height: calc(100vh - 2.4vh);
+}
+
+.main-content {
+    width: 400px;
+    background: rgb(255, 255, 255);
+}
+
+.map-container {
+    flex: 1 1 0;
 }
