@@ -53,7 +53,7 @@ class App extends React.Component {
             }
         });
 
-        //for initial zoom functionality
+        //for zoom functionality
         const zoomAutoComplete = new google.maps.places.Autocomplete(document.querySelector('.address-input'));
         zoomAutoComplete.setComponentRestrictions({ country: ['IN'] });
 
@@ -88,10 +88,8 @@ class App extends React.Component {
         const drawBtn = document.querySelector('.draw-btn');
         drawBtn.addEventListener('click', function() {
 
-            //toggle the drawing buttons
-            if (drawingManager.map) {
-                alert('already drawing');
-            } else {
+            //initialize drawing mode only if not already drawing
+            if (!drawingManager.map) {
                 //set initial drawing mode
                 drawingManager.setDrawingMode('polygon');
                 drawingManager.setOptions({
@@ -123,13 +121,11 @@ class App extends React.Component {
 
     //geocode and zoom to address
     zoomToArea() {
-        //initializing the geocoder
         const geocoder = new google.maps.Geocoder();
         let address = document.querySelector('.address-input').value;
         if (address === '') {
             alert('Enter address');
         } else {
-            //geocode the address and center the map
             geocoder.geocode({
                 address: address,
                 componentRestrictions: {
@@ -152,6 +148,68 @@ class App extends React.Component {
             placeMarkers[i].setMap(null);
         }
         placeMarkers = [];
+    }
+
+    //calculates the bounds of the polygon
+    getPolyBounds() {
+        let polyBounds = new google.maps.LatLngBounds();
+        polygon.getPath().forEach(function(element) {
+            polyBounds.extend(element);
+        });
+        return polyBounds;
+    }
+
+    //draw the polygon on the map
+    drawPolygon(drawingManager) {
+        let self = this;
+
+        drawingManager.addListener('overlaycomplete', function(evt) {
+            //once drawing is complete we go back to free hand movement mode
+            drawingManager.setDrawingMode(null);
+            drawingManager.setOptions({
+                drawingControl: false
+            });
+
+            //creating an editable polygon
+            polygon = evt.overlay;
+            polygon.setEditable(true);
+
+            //searchbox
+            let searchInput = new google.maps.places.SearchBox(document.querySelector('.search-input'));
+            searchInput.setBounds(self.getPolyBounds());
+
+            //this listener if for when the users select the place from the picklist
+            searchInput.addListener('places_changed', function() {
+                self.searchBoxPlaces(searchInput);
+            });
+
+            //redo the search if the polygon is edited
+            polygon.getPath().addListener('set_at', function() {
+                self.textSearchPlaces();
+            });
+            polygon.getPath().addListener('insert_at', function() {
+                self.textSearchPlaces();
+            });
+        });
+    }
+
+    //search for markers in the polygon
+    searchInPolygon() {
+        for (let i = 0; i < placeMarkers.length; i++) {
+            //check if the polygon encolses any markers
+            if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
+                //display the enclosed markers
+                placeMarkers[i].setMap(myMap);
+            } else {
+                //show atmost one marker even if its out of bounds
+                if (placeMarkers.length === 1) {
+                    placeMarkers[0].setMap(myMap);
+                } else {
+                    //hide the rest
+                    placeMarkers[i].setMap(null);
+                }
+            }
+        }
     }
 
     //function that handles the suggested place
@@ -180,7 +238,7 @@ class App extends React.Component {
             //hide any place markers already set
             self.hideMarkers();
             const placesService = new google.maps.places.PlacesService(myMap);
-            //initiate the search
+            //initiate the place search
             placesService.textSearch({
                 query: document.querySelector('.search-input').value,
                 bounds: self.getPolyBounds()
@@ -210,6 +268,7 @@ class App extends React.Component {
                 anchor: new google.maps.Point(15, 34),
                 scaledSize: new google.maps.Size(25, 25)
             };
+
             //create a marker for each place.
             let marker = new google.maps.Marker({
                 icon: icon,
@@ -223,77 +282,24 @@ class App extends React.Component {
 
             //creating a shared place info window
             let placeInfoWindow = new google.maps.InfoWindow();
-            //if a marker is clicked, do a place details search
             marker.addListener('click', function() {
                 //avoid repeated opening of the placeInfoWindow
                 if (placeInfoWindow.marker !== this) {
                     getPlacesDetails(this, placeInfoWindow);
                 }
             });
+
             if (place.geometry.viewport) {
                 bounds.union(place.geometry.viewport);
             } else {
                 bounds.extend(place.geometry.location);
             }
-            this.searchInPolygon();
         }
         myMap.fitBounds(bounds);
-    }
+        myMap.setZoom(14);
 
-    //draw the polygon on the map
-    drawPolygon(drawingManager) {
-        let self = this;
-
-        drawingManager.addListener('overlaycomplete', function(evt) {
-            //once drawing is complete we go back to free hand movement mode
-            drawingManager.setDrawingMode(null);
-            drawingManager.setOptions({
-                drawingControl: false
-            });
-
-            //creating an editable polygon
-            polygon = evt.overlay;
-            polygon.setEditable(true);
-
-            let searchInput = new google.maps.places.SearchBox(document.querySelector('.search-input'));
-            searchInput.setBounds(self.getPolyBounds());
-
-            //this listener if for when the users select the place from the picklist
-            searchInput.addListener('places_changed', function() {
-                self.searchBoxPlaces(searchInput);
-            });
-
-            //redo the search if the polygon is edited
-            polygon.getPath().addListener('set_at', function() {
-                self.textSearchPlaces();
-            });
-            polygon.getPath().addListener('insert_at', function() {
-                self.textSearchPlaces();
-            });
-        });
-    }
-
-    //search for markers in the polygon
-    searchInPolygon() {
-        for (let i = 0; i < placeMarkers.length; i++) {
-            //check if the polygon encolses any markers
-            if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
-                //display the enclosed markers
-                placeMarkers[i].setMap(myMap);
-            } else {
-                //hide the rest
-                placeMarkers[i].setMap(null);
-            }
-        }
-    }
-
-    //calculates the bounds of the polygon
-    getPolyBounds() {
-        let polyBounds = new google.maps.LatLngBounds();
-        polygon.getPath().forEach(function(element) {
-            polyBounds.extend(element);
-        });
-        return polyBounds;
+        //initiate the search once markers are added to array
+        this.searchInPolygon();
     }
 
     render() {
