@@ -96,9 +96,12 @@ class App extends React.Component {
                     drawingControl: true
                 });
                 drawingManager.setMap(myMap);
+                self.drawPolygon(drawingManager);
             }
-
-            self.drawPolygon(drawingManager);
+            //got to bounds of poly on subsequent clicks
+            if (polygon) {
+                myMap.fitBounds(self.getPolyBounds());
+            }
         });
 
         const clearBtn = document.querySelector('.clear-btn');
@@ -195,20 +198,30 @@ class App extends React.Component {
 
     //search for markers in the polygon
     searchInPolygon() {
+        //determines whether the location is found or not
+        let found = false;
+
         for (let i = 0; i < placeMarkers.length; i++) {
             //check if the polygon encolses any markers
             if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
+                found = true;
                 //display the enclosed markers
                 placeMarkers[i].setMap(myMap);
             } else {
                 //show atmost one marker even if its out of bounds
                 if (placeMarkers.length === 1) {
+                    found = true;
                     placeMarkers[0].setMap(myMap);
                 } else {
                     //hide the rest
+                    myMap.fitBounds(this.getPolyBounds());
                     placeMarkers[i].setMap(null);
                 }
             }
+        }
+        if (!found) {
+            //this alert occurs too fast so slow it down for polygon editing to complete
+            setTimeout(() => alert('Please expand your selection or select new area'), 600);
         }
     }
 
@@ -281,11 +294,12 @@ class App extends React.Component {
             placeMarkers.push(marker);
 
             //creating a shared place info window
+            let self = this;
             let placeInfoWindow = new google.maps.InfoWindow();
             marker.addListener('click', function() {
                 //avoid repeated opening of the placeInfoWindow
                 if (placeInfoWindow.marker !== this) {
-                    getPlacesDetails(this, placeInfoWindow);
+                    self.getPlacesDetails(this, placeInfoWindow);
                 }
             });
 
@@ -300,6 +314,11 @@ class App extends React.Component {
 
         //initiate the search once markers are added to array
         this.searchInPolygon();
+    }
+
+    //function that displays place details in infoWindow
+    getPlaceDetails(marker, infoWindow) {
+
     }
 
     render() {
