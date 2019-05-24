@@ -338,17 +338,17 @@ class App extends React.Component {
             placeId: marker.id
         }, function(place, status) {
             if (status === google.maps.places.PlacesServiceStatus.OK) {
-                console.log(place);
                 infoWindow.marker = marker;
 
-                let [content, photos, currentIndex] = self.populateInfoWindow(place);
-                infoWindow.setContent(content);
+                let [photos, currentIndex] = self.populateInfoWindow(place, infoWindow);
                 infoWindow.open(myMap, marker);
 
-                //dynamically add events to btns once infowindow is ready
+                //dynamically attach event listeners to btns once infowindow is ready
                 infoWindow.addListener('domready', function() {
                     //for the photo carousel
                     self.initCarousel(photos, currentIndex);
+                    //for fetching the street view
+                    self.initStreetView(place, infoWindow);
                 });
 
                 //clearing marker on closing infowindow
@@ -361,7 +361,7 @@ class App extends React.Component {
     }
 
     //function that builds the infowindow
-    populateInfoWindow(place) {
+    populateInfoWindow(place, infoWindow) {
         let innerHTML = `<div class="info-main">`;
 
         if (place.name) {
@@ -374,7 +374,7 @@ class App extends React.Component {
             innerHTML += `<div class="info-phn"><span>Phone: </span>${place.formatted_phone_number}</div>`;
         }
         if (place.rating) {
-            innerHTML += `<div class="info-star">${place.rating}<span>★</span></div>`;
+            innerHTML += `<div class="info-star">${place.rating}<li><i class="fa fa-star"></i></li></div>`;
         }
         if (place.reviews && place.url) {
             let review = [];
@@ -396,13 +396,14 @@ class App extends React.Component {
                 photos.push(element.getUrl({ maxHeight: 100, maxWidth: 200 }));
             });
             currentIndex = 0;
-            innerHTML += `<div class="info-img-container"><button class="info-img-prev">&lt;</button><img class="info-img" src="${photos[0]}" alt="No image available"><button class="info-img-next">&gt;</button></div>`;
+            innerHTML += `<div class="info-img-container"><button class="info-img-prev"><li><i class="fa fa-chevron-left"></i></li></button><img class="info-img" src="${photos[0]}" alt="No image available"><button class="info-img-next"><li><i class="fa fa-chevron-right"></i></li></button></div>`;
         }
 
         innerHTML += `<div class="info-btns"><button class="btn-street">Street View</button><button class="btn-route">Show route</button></div>`
         innerHTML += `</div>`;
 
-        return [innerHTML, photos, currentIndex];
+        infoWindow.setContent(innerHTML);
+        return [photos, currentIndex];
     }
 
     //function that implements the photo carousel
@@ -425,6 +426,45 @@ class App extends React.Component {
                     infoImg.src = photos[prevIndex];
                     currentIndex = prevIndex;
                 }
+            });
+        }
+    }
+
+    //functions that starts and embeds the street view
+    initStreetView(place, infoWindow) {
+        let self = this;
+        const streetBtn = document.querySelector('.btn-street');
+        const backBtn = document.querySelector('.back-btn');
+
+        if (streetBtn) {
+            streetBtn.addEventListener('click', function() {
+                let streetViewService = new google.maps.StreetViewService();
+                //get the nearest street view from position at radius of 50 meters
+                let radius = 50;
+                //this function is used to get panorama shot for the given location
+                streetViewService.getPanoramaByLocation(place.geometry.location, radius, function(data, status) {
+                    if (status === google.maps.StreetViewStatus.OK) {
+                        //the location
+                        let location = data.location.latLng;
+                        let heading = google.maps.geometry.spherical.computeHeading(location, place.geometry.location);
+                        infoWindow.setContent(`<div class="street-main"><div class="street-top"><button class="back-btn"><li><i class="fa fa-arrow-left"></i></li></button><div class="street-head">${place.name}</div></div><div class="street-info">Nearest Streetview found</div><div id="pano"></div></div>`);
+                        let panoramaOptions = {
+                            position: location,
+                            pov: {
+                                heading: heading,
+                                pitch: 10
+                            }
+                        };
+                        let panorama = new google.maps.StreetViewPanorama(document.querySelector('#pano'), panoramaOptions);
+                    } else {
+                        infoWindow.setContent(`<div class="street-head">${place.name}</div><p align="center">No Street View Found</p>`);
+                    }
+                });
+            });
+        }
+        if (backBtn) {
+            backBtn.addEventListener('click', function() {
+                self.populateInfoWindow(place, infoWindow);
             });
         }
     }
