@@ -100,7 +100,7 @@ class App extends React.Component {
                 drawingManager.setMap(myMap);
                 self.drawPolygon(drawingManager);
             }
-            //got to bounds of poly on subsequent clicks
+            //goto bounds of poly on subsequent clicks
             if (polygon) {
                 myMap.fitBounds(self.getPolyBounds());
             }
@@ -167,7 +167,6 @@ class App extends React.Component {
     //draw the polygon on the map
     drawPolygon(drawingManager) {
         let self = this;
-
         drawingManager.addListener('overlaycomplete', function(evt) {
             //once drawing is complete we go back to free hand movement mode
             drawingManager.setDrawingMode(null);
@@ -202,7 +201,6 @@ class App extends React.Component {
     searchInPolygon() {
         //determines whether the location is found or not
         let found = false;
-
         for (let i = 0; i < placeMarkers.length; i++) {
             //check if the polygon encolses any markers
             if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
@@ -229,13 +227,12 @@ class App extends React.Component {
 
     //function that handles the suggested place
     searchBoxPlaces(searchBox) {
+        let self = this;
         if (polygon) {
-            let self = this;
             //hide any place markers already set
             self.hideMarkers();
-            //get all places from the query
+            //we get places from the searchbox
             let places = searchBox.getPlaces();
-            console.log(searchBox.getPlaces());
             //we create markers for the places
             self.createMarkersForPlaces(places);
             if (places.length === 0) {
@@ -248,8 +245,8 @@ class App extends React.Component {
 
     //display new places on resizing the polygon or on btn click
     textSearchPlaces() {
+        let self = this;
         if (polygon) {
-            let self = this;
             //hide any place markers already set
             self.hideMarkers();
             const placesService = new google.maps.places.PlacesService(myMap);
@@ -271,6 +268,7 @@ class App extends React.Component {
 
     //function that creates markers for each place found in places search
     createMarkersForPlaces(places) {
+        let self = this;
         //set marker bounds
         let bounds = new google.maps.LatLngBounds();
 
@@ -296,7 +294,6 @@ class App extends React.Component {
             placeMarkers.push(marker);
 
             //creating a shared place info window
-            let self = this;
             placeInfoWindow = new google.maps.InfoWindow();
             marker.addListener('click', function() {
                 //avoid repeated opening of the placeInfoWindow
@@ -323,6 +320,7 @@ class App extends React.Component {
 
     //get more details on a particular place whose marker is clicked
     getPlacesDetails(marker, infoWindow) {
+        let self = this;
         //setting marker bounce effect
         for (let i in placeMarkers) {
             //bounce only the marker which matches the current clicked marker
@@ -334,6 +332,7 @@ class App extends React.Component {
             }
         }
 
+        //create a place service to get details on the places
         const service = new google.maps.places.PlacesService(myMap);
         service.getDetails({
             placeId: marker.id
@@ -342,81 +341,92 @@ class App extends React.Component {
                 console.log(place);
                 infoWindow.marker = marker;
 
-                let innerHTML = `<div class="info-main">`;
-                if (place.name) {
-                    innerHTML += `<div class="info-head">${place.name}</div>`;
-                }
-                if (place.formatted_address) {
-                    innerHTML += `<div class="info-address"><span>Address: </span>${place.formatted_address}</div>`;
-                }
-                if (place.formatted_phone_number) {
-                    innerHTML += `<div class="info-phn"><span>Phone: </span>${place.formatted_phone_number}</div>`;
-                }
-                if (place.rating) {
-                    innerHTML += `<div class="info-star">${place.rating}<span>★</span></div>`;
-                }
-                if (place.reviews && place.url) {
-                    let review = [];
-                    place.reviews.forEach((element) => {
-                        review.push(element.text.split(' ').splice(0, 30));
-                    });
-                    //pad reviews with > 30 words
-                    let str = review[0].join(" ");
-                    if (str.split(' ').length >= 30) {
-                        innerHTML += `<div class="info-review">'${str.padEnd(str.length + 3, '.')}'<a class="info-link" href=${place.url} target="_blank">View more</a></div>`;
-                    } else {
-                        innerHTML += `<div class="info-review">'${str}'<a class="info-link" href=${place.url} target="_blank">View more</a></div>`;
-                    }
-                }
-
-                let photos = [];
-                let currentIndex;
-                if (place.photos) {
-                    place.photos.forEach((element) => {
-                        photos.push(element.getUrl({ maxHeight: 100, maxWidth: 200 }));
-                    });
-                    currentIndex = 0;
-                    innerHTML += `<div class="info-img-container"><button class="info-img-prev">&lt;</button><img class="info-img" src="${photos[0]}" alt="No image available"><button class="info-img-next">&gt;</button></div>`;
-                }
-
-                innerHTML += `<div class="info-btns"><button>Street View</button><button>Show route</button></div>`
-                innerHTML += `</div>`;
-                infoWindow.setContent(innerHTML);
+                let [content, photos, currentIndex] = self.populateInfoWindow(place);
+                infoWindow.setContent(content);
                 infoWindow.open(myMap, marker);
 
-                //make sure the marker property is cleared if the infoWindow is closed
+                //dynamically add events to btns once infowindow is ready
+                infoWindow.addListener('domready', function() {
+                    //for the photo carousel
+                    self.initCarousel(photos, currentIndex);
+                });
+
+                //clearing marker on closing infowindow
                 infoWindow.addListener('closeclick', function() {
                     infoWindow.marker = null;
                     marker.setAnimation(null);
                 });
-
-                //for the photo carousel
-                infoWindow.addListener('domready', function() {
-                    const nextImage = document.querySelector('.info-img-next');
-                    const prevImage = document.querySelector('.info-img-prev');
-
-                    const infoImg = document.querySelector('.info-img');
-
-                    if (nextImage && prevImage && infoImg) {
-                        nextImage.addEventListener('click', function() {
-                            if (currentIndex < photos.length - 1) {
-                                let nextIndex = currentIndex + 1;
-                                infoImg.src = photos[nextIndex];
-                                currentIndex = nextIndex;
-                            }
-                        });
-
-                        prevImage.addEventListener('click', function() {
-                            if (currentIndex > 0) {
-                                let prevIndex = currentIndex - 1;
-                                infoImg.src = photos[prevIndex];
-                                currentIndex = prevIndex;
-                            }
-                        });
-                    }
-                });
             }
         });
+    }
+
+    //function that builds the infowindow
+    populateInfoWindow(place) {
+        let innerHTML = `<div class="info-main">`;
+
+        if (place.name) {
+            innerHTML += `<div class="info-head">${place.name}</div>`;
+        }
+        if (place.formatted_address) {
+            innerHTML += `<div class="info-address"><span>Address: </span>${place.formatted_address}</div>`;
+        }
+        if (place.formatted_phone_number) {
+            innerHTML += `<div class="info-phn"><span>Phone: </span>${place.formatted_phone_number}</div>`;
+        }
+        if (place.rating) {
+            innerHTML += `<div class="info-star">${place.rating}<span>★</span></div>`;
+        }
+        if (place.reviews && place.url) {
+            let review = [];
+            place.reviews.forEach((element) => {
+                review.push(element.text.split(' ').splice(0, 30));
+            });
+            //pad reviews with > 30 words
+            let str = review[0].join(" ");
+            if (str.split(' ').length >= 30) {
+                innerHTML += `<div class="info-review">'${str.padEnd(str.length + 3, '.')}'<a class="info-link" href=${place.url} target="_blank">View more</a></div>`;
+            } else {
+                innerHTML += `<div class="info-review">'${str}'<a class="info-link" href=${place.url} target="_blank">View more</a></div>`;
+            }
+        }
+        let photos = [];
+        let currentIndex;
+        if (place.photos) {
+            place.photos.forEach((element) => {
+                photos.push(element.getUrl({ maxHeight: 100, maxWidth: 200 }));
+            });
+            currentIndex = 0;
+            innerHTML += `<div class="info-img-container"><button class="info-img-prev">&lt;</button><img class="info-img" src="${photos[0]}" alt="No image available"><button class="info-img-next">&gt;</button></div>`;
+        }
+
+        innerHTML += `<div class="info-btns"><button class="btn-street">Street View</button><button class="btn-route">Show route</button></div>`
+        innerHTML += `</div>`;
+
+        return [innerHTML, photos, currentIndex];
+    }
+
+    //function that implements the photo carousel
+    initCarousel(photos, currentIndex) {
+        const nextImage = document.querySelector('.info-img-next');
+        const prevImage = document.querySelector('.info-img-prev');
+        const infoImg = document.querySelector('.info-img');
+
+        if (nextImage && prevImage && infoImg) {
+            nextImage.addEventListener('click', function() {
+                if (currentIndex < photos.length - 1) {
+                    let nextIndex = currentIndex + 1;
+                    infoImg.src = photos[nextIndex];
+                    currentIndex = nextIndex;
+                }
+            });
+            prevImage.addEventListener('click', function() {
+                if (currentIndex > 0) {
+                    let prevIndex = currentIndex - 1;
+                    infoImg.src = photos[prevIndex];
+                    currentIndex = prevIndex;
+                }
+            });
+        }
     }
 
     render() {
