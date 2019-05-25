@@ -11,6 +11,12 @@ let placeMarkers = [];
 
 let placeInfoWindow;
 
+let routeMarker;
+
+let carousel = false;
+
+let directionsDisplay;
+
 class App extends React.Component {
 
     constructor(props) {
@@ -42,7 +48,11 @@ class App extends React.Component {
         let mapContainer = document.querySelector('.map-container');
         myMap = new google.maps.Map(mapContainer, {
             zoom: 6,
-            mapTypeControl: false
+            mapTypeControl: false,
+            fullscreenControl: false,
+            streetViewControl: false,
+            gestureHandling: 'greedy',
+            controlSize: 33
         });
 
         //setting the default location
@@ -84,6 +94,14 @@ class App extends React.Component {
                 drawingModes: [
                     google.maps.drawing.OverlayType.POLYGON
                 ]
+            },
+            polygonOptions: {
+                fillColor: '#202020',
+                fillOpacity: 0.2,
+                strokeWeight: 3,
+                strokeColor: '#7447df',
+                clickable: false,
+                editable: true,
             }
         });
 
@@ -117,6 +135,16 @@ class App extends React.Component {
                 }
                 self.hideMarkers();
             }
+            //clearing the set listeners and route marker
+            if (routeMarker) {
+                routeMarker.setMap(null);
+                routeMarker = null;
+            }
+            google.maps.event.clearListeners(myMap, 'click');
+            if (polygon) {
+                google.maps.event.clearListeners(polygon, 'click');
+            }
+            self.resetState();
         });
 
         //places search on btn click
@@ -155,6 +183,17 @@ class App extends React.Component {
         placeMarkers = [];
     }
 
+    //reset our state on clear
+    resetState() {
+        carousel = false;
+        google.maps.event.clearListeners(placeInfoWindow, 'domready');
+        if (directionsDisplay) {
+            directionsDisplay.setMap(null);
+            directionsDisplay.setPanel(null);
+            directionsDisplay = null;
+        }
+    }
+
     //calculates the bounds of the polygon
     getPolyBounds() {
         let polyBounds = new google.maps.LatLngBounds();
@@ -167,7 +206,8 @@ class App extends React.Component {
     //draw the polygon on the map
     drawPolygon(drawingManager) {
         let self = this;
-        drawingManager.addListener('overlaycomplete', function(evt) {
+
+        google.maps.event.addListenerOnce(drawingManager, 'overlaycomplete', function(evt) {
             //once drawing is complete we go back to free hand movement mode
             drawingManager.setDrawingMode(null);
             drawingManager.setOptions({
@@ -179,20 +219,24 @@ class App extends React.Component {
             polygon.setEditable(true);
 
             //searchbox
-            let searchInput = new google.maps.places.SearchBox(document.querySelector('.search-input'));
-            searchInput.setBounds(self.getPolyBounds());
+            const searchInput = document.querySelector('.search-input');
+            let searchBox = new google.maps.places.SearchBox(searchInput);
+            searchBox.setBounds(self.getPolyBounds());
 
             //this listener if for when the users select the place from the picklist
-            searchInput.addListener('places_changed', function() {
-                self.searchBoxPlaces(searchInput);
+            searchBox.addListener('places_changed', function() {
+                self.searchBoxPlaces(searchBox);
             });
-
             //redo the search if the polygon is edited
             polygon.getPath().addListener('set_at', function() {
-                self.textSearchPlaces();
+                if (searchInput.value) {
+                    self.textSearchPlaces();
+                }
             });
             polygon.getPath().addListener('insert_at', function() {
-                self.textSearchPlaces();
+                if (searchInput.value) {
+                    self.textSearchPlaces();
+                }
             });
         });
     }
@@ -288,7 +332,7 @@ class App extends React.Component {
                 title: place.name,
                 position: place.geometry.location,
                 id: place.place_id,
-                animation: google.maps.Animation.DROP
+                animation: google.maps.Animation.DROP,
             });
 
             placeMarkers.push(marker);
@@ -303,6 +347,8 @@ class App extends React.Component {
                     myMap.setZoom(14);
                     self.getPlacesDetails(this, placeInfoWindow);
                 }
+                //clearing the set listeners
+                self.resetState();
             });
 
             if (place.geometry.viewport) {
@@ -344,17 +390,23 @@ class App extends React.Component {
                 infoWindow.open(myMap, marker);
 
                 //dynamically attach event listeners to btns once infowindow is ready
-                infoWindow.addListener('domready', function() {
+                google.maps.event.addListener(infoWindow, 'domready', function() {
                     //for the photo carousel
-                    self.initCarousel(photos, currentIndex);
+                    if (!carousel) {
+                        self.initCarousel(photos, currentIndex);
+                    }
                     //for fetching the street view
                     self.initStreetView(place, infoWindow);
+                    //for checking marker and displaying the route
+                    self.checkMarker(place, infoWindow);
                 });
 
                 //clearing marker on closing infowindow
-                infoWindow.addListener('closeclick', function() {
+                google.maps.event.addListenerOnce(infoWindow, 'closeclick', function() {
                     infoWindow.marker = null;
                     marker.setAnimation(null);
+                    //clearing the set listeners
+                    self.resetState();
                 });
             }
         });
@@ -434,10 +486,10 @@ class App extends React.Component {
     initStreetView(place, infoWindow) {
         let self = this;
         const streetBtn = document.querySelector('.btn-street');
-        const backBtn = document.querySelector('.back-btn');
 
         if (streetBtn) {
             streetBtn.addEventListener('click', function() {
+                carousel = true;
                 let streetViewService = new google.maps.StreetViewService();
                 //get the nearest street view from position at radius of 50 meters
                 let radius = 50;
@@ -447,25 +499,138 @@ class App extends React.Component {
                         //the location
                         let location = data.location.latLng;
                         let heading = google.maps.geometry.spherical.computeHeading(location, place.geometry.location);
-                        infoWindow.setContent(`<div class="street-main"><div class="street-top"><button class="back-btn"><li><i class="fa fa-arrow-left"></i></li></button><div class="street-head">${place.name}</div></div><div class="street-info">Nearest Streetview found</div><div id="pano"></div></div>`);
+                        infoWindow.setContent(`<div class="street-main"><div class="street-top"><button class="back-btn"><li><i class="fa fa-arrow-left"></i></li></button><div class="street-head">${place.name}</div></div><div class="street-info">Nearest Streetview</div><div class="street-pano"><div id="pano"></div></div></div>`);
                         let panoramaOptions = {
                             position: location,
                             pov: {
                                 heading: heading,
                                 pitch: 10
-                            }
+                            },
+                            controlSize: 27,
+                            motionTrackingControl: false,
+                            motionTracking: false,
+                            linksControl: false,
+                            panControl: false,
+                            enableCloseButton: false
                         };
                         let panorama = new google.maps.StreetViewPanorama(document.querySelector('#pano'), panoramaOptions);
                     } else {
-                        infoWindow.setContent(`<div class="street-head">${place.name}</div><p align="center">No Street View Found</p>`);
+                        infoWindow.setContent(`<button class="back-btn"><li><i class="fa fa-arrow-left"></i></li></button><span class="street-head">${place.name}</span><p align="center">No Street View Found</p>`);
+                    }
+                    //for the back btn
+                    const backBtn = document.querySelector('.back-btn');
+                    if (backBtn) {
+                        backBtn.addEventListener('click', function() {
+                            carousel = false;
+                            self.populateInfoWindow(place, infoWindow);
+                        });
                     }
                 });
             });
         }
-        if (backBtn) {
-            backBtn.addEventListener('click', function() {
-                self.populateInfoWindow(place, infoWindow);
+    }
+
+    //function that handles whether marker should be created or not
+    checkMarker(place, infoWindow) {
+        let self = this;
+        const btnRoute = document.querySelector('.btn-route');
+
+        if (btnRoute) {
+            btnRoute.addEventListener('click', function() {
+                carousel = true;
+                if (!routeMarker) {
+                    infoWindow.setContent('Please select your origin');
+                } else {
+                    infoWindow.setContent(`<div class="route-main"><select id="mode"><option value="DRIVING">Drive</option><option value="WALKING">Walk</option><option value="BICYCLING">Bike</option><option value="TRANSIT">Transit</option></select><button class="show-btn">Show</button></div>`);
+                    self.getRoute(place, infoWindow);
+                }
+                myMap.addListener('click', function(evt) {
+                    if (!routeMarker) {
+                        self.createMarker(place, infoWindow, evt);
+                    }
+                });
+                if (polygon) {
+                    polygon.addListener('click', function(evt) {
+                        if (!routeMarker) {
+                            self.createMarker(place, infoWindow, evt);
+                        }
+                    });
+                }
             });
+        }
+    }
+
+    //function that actually creates the marker
+    createMarker(place, infoWindow, evt) {
+        routeMarker = new google.maps.Marker({
+            position: evt.latLng,
+            map: myMap,
+        });
+        this.getRoute(place, infoWindow);
+    }
+
+    getRoute(place, infoWindow) {
+        if (routeMarker) {
+            //remove marker on clicking it
+            google.maps.event.addListenerOnce(routeMarker, 'click', function() {
+                if (routeMarker) {
+                    infoWindow.setContent('Please select your origin');
+                    routeMarker.setMap(null);
+                    routeMarker = null;
+                    if (directionsDisplay) {
+                        directionsDisplay.setMap(null);
+                        directionsDisplay.setPanel(null);
+                        directionsDisplay = null;
+                    }
+                }
+            });
+
+            infoWindow.setContent(`<div class="route-main"><select id="mode"><option value="DRIVING">Drive</option><option value="WALKING">Walk</option><option value="BICYCLING">Bike</option><option value="TRANSIT">Metro</option></select><button class="show-btn">Show</button></div>`);
+            const showBtn = document.querySelector('.show-btn');
+            if (showBtn) {
+                showBtn.addEventListener('click', function() {
+                    let mode = document.getElementById('mode').value;
+                    const directionsService = new google.maps.DirectionsService();
+                    //get the direction between the route and destination
+                    directionsService.route({
+                        origin: routeMarker.position,
+                        destination: place.geometry.location,
+                        travelMode: google.maps.TravelMode[mode]
+                    }, function(response, status) {
+                        if (status === google.maps.DirectionsStatus.OK) {
+                            directionsDisplay = new google.maps.DirectionsRenderer({
+                                map: myMap,
+                                directions: response,
+                                draggable: false,
+                                suppressMarkers: true,
+                                hideRouteList: true,
+                                polylineOptions: {
+                                    strokeColor: 'green',
+                                    strokeWeight: 4,
+                                    editable: false,
+                                    zIndex: 10,
+                                }
+                            });
+                            let result = response.routes[0].legs[0];
+                            if (place.name && result.duration.text && result.distance.text) {
+                                infoWindow.setContent(`<span class="place-name">${place.name}</span> is <span class="place-duration">${result.duration.text}</span> away, at <span class="place-distance">${result.distance.text}</span><div class="direction-btn-ctn"><button class="direction-btn">Directions</button></div>`);
+                            } else {
+                                infoWindow.setContent('<span>Route not available for this place');
+                            }
+                            if (directionsDisplay) {
+                                const dirBtn = document.querySelector('.direction-btn');
+                                if (dirBtn) {
+                                    dirBtn.addEventListener('click', function() {
+                                        directionsDisplay.setPanel(document.querySelector('.direction-display'));
+                                    });
+                                }
+                            }
+                        } else {
+                            alert('Unable to get direction for that loaction');
+                        }
+                    });
+                });
+            }
         }
     }
 
@@ -478,6 +643,7 @@ class App extends React.Component {
                         <div>
                             <input type="text" className="address-input" placeholder="Enter Area" />
                             <button className="zoom">Zoom</button>
+                            <div className="direction-display"></div>
                         </div>
                         <div>
                             <button className="draw-btn">Draw</button>
@@ -491,7 +657,6 @@ class App extends React.Component {
                     </div>
                     <div className="map-container"></div>
                 </div>
-
             </div>
         );
     }

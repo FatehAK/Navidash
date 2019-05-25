@@ -169,7 +169,7 @@ li {
     font-weight: bold;
     font-size: 1.15em;
     margin: 0 0 8px 0;
-    max-width: 360px;
+    max-width: 345px;
     text-align: center;
 }
 
@@ -193,10 +193,90 @@ li {
 
 .street-info {
     margin: 0 0 10px 0;
+    width: 360px;
+}
+
+.street-pano {
+    height: 200px;
 }
 
 #pano {
-    width: 380px;
-    height: 200px;
+    height: 100%;
+    width: 100%;
     border-radius: 5px;
+}
+
+.route-main {
+    display: flex;
+    align-items: center;
+    margin: 8px 7px 8px 9px;
+}
+
+.route-main > select {
+    margin: 0 10px 0 0;
+    width: 100px;
+    height: 30px;
+    font-size: 1.1em;
+    cursor: pointer;
+}
+
+.route-main > select:focus {
+    outline: none;
+}
+
+.show-btn {
+    background: #7447df;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 8px 12px;
+}
+
+.show-btn:hover {
+    background: #8856ff;
+}
+
+.show-btn:focus {
+    outline: none;
+}
+
+.place-name {
+    color: #7447df;
+    font-weight: 500;
+}
+
+.place-duration {
+    font-weight: 500;
+}
+
+.place-distance {
+    font-weight: 500;
+}
+
+.boom {
+    height: 100px;
+    /* overflow: auto; */
+    width: 150px;
+}
+
+.direction-btn-ctn {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.direction-btn {
+    font-size: 0.9em;
+    background: #7447df;
+    color: white;
+    border: 0;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 6px 10px;
+    margin: 15px 0 0 0;
+}
+
+.direction-btn:hover {
+    background: #8856ff;
 }
