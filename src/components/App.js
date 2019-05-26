@@ -23,11 +23,7 @@ class App extends React.Component {
         super(props);
         //retain object instance when used in the function
         this.initMap = this.initMap.bind(this);
-        this.drawPolygon = this.drawPolygon.bind(this);
-        this.searchBoxPlaces = this.searchBoxPlaces.bind(this);
         this.textSearchPlaces = this.textSearchPlaces.bind(this);
-        this.hideMarkers = this.hideMarkers.bind(this);
-        this.createMarkersForPlaces = this.createMarkersForPlaces.bind(this);
     }
 
     componentDidMount() {
@@ -186,7 +182,9 @@ class App extends React.Component {
     //reset our state on clear
     resetState() {
         carousel = false;
-        google.maps.event.clearListeners(placeInfoWindow, 'domready');
+        if (placeInfoWindow) {
+            google.maps.event.clearListeners(placeInfoWindow, 'domready');
+        }
         if (directionsDisplay) {
             directionsDisplay.setMap(null);
             directionsDisplay.setPanel(null);
@@ -271,14 +269,13 @@ class App extends React.Component {
 
     //function that handles the suggested place
     searchBoxPlaces(searchBox) {
-        let self = this;
         if (polygon) {
             //hide any place markers already set
-            self.hideMarkers();
+            this.hideMarkers();
             //we get places from the searchbox
             let places = searchBox.getPlaces();
             //we create markers for the places
-            self.createMarkersForPlaces(places);
+            this.createMarkersForPlaces(places);
             if (places.length === 0) {
                 alert('No places found');
             }
@@ -332,7 +329,7 @@ class App extends React.Component {
                 title: place.name,
                 position: place.geometry.location,
                 id: place.place_id,
-                animation: google.maps.Animation.DROP,
+                animation: google.maps.Animation.DROP
             });
 
             placeMarkers.push(marker);
