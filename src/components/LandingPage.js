@@ -3,12 +3,12 @@
 import React from 'react';
 
 //make sure the init function is called only once
-let called = false;
+let lCalled = false;
 
 class LandingPage extends React.Component {
 
     initLanding() {
-        called = true;
+        lCalled = true;
         let self = this;
 
         //our places autocomplete
@@ -26,8 +26,7 @@ class LandingPage extends React.Component {
             else {
                 myMap.setCenter(place.geometry.location);
                 myMap.setZoom(14);
-                window.mapDisplay = true;
-                called = false;
+                lCalled = false;
                 self.props.historyObj.push('/search');
             }
         });
@@ -48,8 +47,7 @@ class LandingPage extends React.Component {
                 if (status === google.maps.GeocoderStatus.OK) {
                     myMap.setCenter(results[0].geometry.location);
                     myMap.setZoom(14);
-                    window.mapDisplay = true;
-                    called = false;
+                    lCalled = false;
                     self.props.historyObj.push('/search');
                 } else {
                     alert('Location not found');
@@ -64,7 +62,7 @@ class LandingPage extends React.Component {
         return (
             <div className="landing-page">
                 <h3>Landing Page</h3>
-                <input type="text" className="address-input" placeholder="Search city" onFocus={() => (!called) && (this.initLanding())} />
+                <input type="text" className="address-input" placeholder="Search city" onFocus={() => (!lCalled) && (this.initLanding())} />
                 <button className="-btn" onClick={() => this.zoomToArea()}>Search</button>
             </div>
         );

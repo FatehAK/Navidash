@@ -28,7 +28,6 @@ class App extends React.Component {
         let mapContainer = document.querySelector('.map-container');
         mapContainer.style.display = 'none';
 
-        window.mapDisplay = false;
         window.myMap = new google.maps.Map(mapContainer, {
             zoom: 6,
             mapTypeControl: false,

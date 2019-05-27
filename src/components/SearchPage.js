@@ -22,7 +22,9 @@ let drawingManager;
 //for ensuring functions are called only once
 let carousel = false;
 
-let called = false;
+let sCalled = false;
+
+let opened = false;
 
 class App extends React.Component {
 
@@ -33,21 +35,19 @@ class App extends React.Component {
     }
 
     componentDidMount() {
-        if (window.mapDisplay === true) {
-            let mapContainer = document.querySelector('.map-container');
-            mapContainer.style.display = 'block';
-        }
+        let mapContainer = document.querySelector('.map-container');
+        mapContainer.style.display = 'block';
     }
 
     componentWillUnmount() {
         let mapContainer = document.querySelector('.map-container');
         mapContainer.style.display = 'none';
-        called = false;
+        sCalled = false;
         this.clearAll();
     }
 
     initSearch() {
-        called = true
+        sCalled = true
         let self = this;
         //for drawing polylines on the map
         if (!drawingManager) {
@@ -72,7 +72,7 @@ class App extends React.Component {
         }
 
         const drawBtn = document.querySelector('.draw-btn');
-        google.maps.event.addDomListener(drawBtn, 'click', function() {
+        drawBtn.addEventListener('click', function() {
             //initialize drawing mode only if not already drawing
             if (!drawingManager.map) {
                 //set initial drawing mode
@@ -90,9 +90,40 @@ class App extends React.Component {
         });
 
         const clearBtn = document.querySelector('.clear-btn');
-        google.maps.event.addDomListener(clearBtn, 'click', function() {
+        clearBtn.addEventListener('click', function() {
             self.clearAll();
         });
+
+        //for the place search button
+        const searchBtn = document.querySelector('.search-btn');
+        searchBtn.addEventListener('click', self.textSearchPlaces);
+
+        //for sidebar navigation
+        const openNav = document.querySelector('.open-nav');
+        openNav.addEventListener('click', self.toogleSide);
+
+        const closeNav = document.querySelector('.close-nav');
+        closeNav.addEventListener('click', function() {
+            document.querySelector(".sidenav").style.width = "0";
+            document.getElementById("main").style.marginLeft = "0";
+            opened = false;
+        });
+
+        const directionCtn = document.querySelector('.direction-display');
+        directionCtn.innerHTML = '<p class="direction-para">Select route to display directions<p>';
+    }
+
+    //toggle the sidebar visibility
+    toogleSide() {
+        if (!opened) {
+            opened = true;
+            document.querySelector(".sidenav").style.width = "350px";
+            document.getElementById("main").style.marginLeft = "350px";
+        } else {
+            document.querySelector(".sidenav").style.width = "0";
+            document.getElementById("main").style.marginLeft = "0";
+            opened = false;
+        }
     }
 
     //clear all data
@@ -121,6 +152,13 @@ class App extends React.Component {
             google.maps.event.clearListeners(polygon, 'click');
         }
         this.resetState();
+        if (opened) {
+            document.querySelector(".sidenav").style.width = "0";
+            document.getElementById("main").style.marginLeft = "0";
+            opened = false;
+        }
+        const directionCtn = document.querySelector('.direction-display');
+        directionCtn.innerHTML = '<p class="direction-para">Select route to display directions<p>';
     }
 
     //hiding our markers and cleaning the array
@@ -139,7 +177,6 @@ class App extends React.Component {
         }
         if (directionsDisplay) {
             directionsDisplay.setMap(null);
-            directionsDisplay.setPanel(null);
             directionsDisplay = null;
         }
     }
@@ -265,6 +302,9 @@ class App extends React.Component {
                 alert('Enter search query');
             }
         } else {
+            const searchInput = document.querySelector('.search-input');
+            searchInput.setAttribute('placeholder', 'Click on the draw icon and define the region');
+            searchInput.value = '';
             alert('Please select area first');
         }
     }
@@ -308,6 +348,9 @@ class App extends React.Component {
                 }
                 //clearing the set listeners
                 self.resetState();
+                document.querySelector(".sidenav").style.width = "0";
+                document.getElementById("main").style.marginLeft = "0";
+                opened = false;
             });
 
             if (place.geometry.viewport) {
@@ -366,6 +409,9 @@ class App extends React.Component {
                     marker.setAnimation(null);
                     //clearing the set listeners
                     self.resetState();
+                    document.querySelector(".sidenav").style.width = "0";
+                    document.getElementById("main").style.marginLeft = "0";
+                    opened = false;
                 });
             }
         });
@@ -529,6 +575,7 @@ class App extends React.Component {
     }
 
     getRoute(place, infoWindow) {
+        let self = this;
         if (routeMarker) {
             //remove marker on clicking it
             google.maps.event.addListenerOnce(routeMarker, 'click', function() {
@@ -580,7 +627,12 @@ class App extends React.Component {
                                 const dirBtn = document.querySelector('.direction-btn');
                                 if (dirBtn) {
                                     dirBtn.addEventListener('click', function() {
+                                        const directionCtn = document.querySelector('.direction-display');
+                                        directionCtn.innerHTML = "";
                                         directionsDisplay.setPanel(document.querySelector('.direction-display'));
+                                        opened = true;
+                                        document.querySelector(".sidenav").style.width = "350px";
+                                        document.getElementById("main").style.marginLeft = "350px";
                                     });
                                 }
                             }
@@ -595,13 +647,19 @@ class App extends React.Component {
 
     render() {
         return (
-            <div className="search-page" onFocus={() => (!called) && (this.initSearch())}>
+            <div className="search-page" onFocus={() => (!sCalled) && (this.initSearch())}>
+                <div className="sidenav">
+                    <a href="#" className="close-nav"><i class="fas fa-times"></i></a>
+                    <div className="direction-display"></div>
+                </div>
+                <div className="nav-container"><button className="open-nav" title="Directions"><i class="fas fa-directions"></i></button></div>
                 <div className="main-content">
                     <div className="search-btn-container">
                         <Link to="/" className="goback-btn" onClick={() => this.clearAll()}><i className="fas fa-chevron-left"></i></Link>
                         <input className="search-input" type="text" placeholder="Click on the draw icon and define the region" />
+                        <button className="search-btn"><i className="fas fa-search"></i></button>
                     </div>
-                    <div class="buttons-container">
+                    <div className="buttons-container">
                         <a href="#" className="buttons draw-btn" tooltip="Draw"><i className="fas fa-draw-polygon"></i></a>
                         <a href="#" className="buttons clear-btn" tooltip="Clear"><i className="fas fa-undo"></i></a>
                         <a className="buttons" href="#"></a>
