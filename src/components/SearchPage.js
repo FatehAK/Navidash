@@ -64,7 +64,7 @@ class App extends React.Component {
                     fillColor: '#202020',
                     fillOpacity: 0.2,
                     strokeWeight: 3,
-                    strokeColor: '#7447df',
+                    strokeColor: '#3f3d55',
                     clickable: false,
                     editable: true,
                 }
@@ -117,8 +117,8 @@ class App extends React.Component {
     toogleSide() {
         if (!opened) {
             opened = true;
-            document.querySelector(".sidenav").style.width = "350px";
-            document.getElementById("main").style.marginLeft = "350px";
+            document.querySelector(".sidenav").style.width = "320px";
+            document.getElementById("main").style.marginLeft = "320px";
         } else {
             document.querySelector(".sidenav").style.width = "0";
             document.getElementById("main").style.marginLeft = "0";
@@ -129,7 +129,7 @@ class App extends React.Component {
     //clear all data
     clearAll() {
         const searchInput = document.querySelector('.search-input');
-        searchInput.setAttribute('placeholder', 'Click on the draw icon and define the region');
+        searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
         searchInput.value = '';
         if (drawingManager) {
             if (drawingManager.map) {
@@ -272,7 +272,7 @@ class App extends React.Component {
             }
         } else {
             const searchInput = document.querySelector('.search-input');
-            searchInput.setAttribute('placeholder', 'Click on the draw icon and define the region');
+            searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
             searchInput.value = '';
             alert('Please select area first');
         }
@@ -303,7 +303,7 @@ class App extends React.Component {
             }
         } else {
             const searchInput = document.querySelector('.search-input');
-            searchInput.setAttribute('placeholder', 'Click on the draw icon and define the region');
+            searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
             searchInput.value = '';
             alert('Please select area first');
         }
@@ -590,7 +590,6 @@ class App extends React.Component {
                     }
                 }
             });
-
             infoWindow.setContent(`<div class="route-main"><select id="mode"><option value="DRIVING">Drive</option><option value="WALKING">Walk</option><option value="BICYCLING">Bike</option><option value="TRANSIT">Metro</option></select><button class="show-btn">Show</button></div>`);
             const showBtn = document.querySelector('.show-btn');
             if (showBtn) {
@@ -611,7 +610,7 @@ class App extends React.Component {
                                 suppressMarkers: true,
                                 hideRouteList: true,
                                 polylineOptions: {
-                                    strokeColor: 'green',
+                                    strokeColor: '#fe6347',
                                     strokeWeight: 4,
                                     editable: false,
                                     zIndex: 10,
@@ -631,8 +630,8 @@ class App extends React.Component {
                                         directionCtn.innerHTML = "";
                                         directionsDisplay.setPanel(document.querySelector('.direction-display'));
                                         opened = true;
-                                        document.querySelector(".sidenav").style.width = "350px";
-                                        document.getElementById("main").style.marginLeft = "350px";
+                                        document.querySelector(".sidenav").style.width = "320px";
+                                        document.getElementById("main").style.marginLeft = "320px";
                                     });
                                 }
                             }
@@ -649,14 +648,14 @@ class App extends React.Component {
         return (
             <div className="search-page" onFocus={() => (!sCalled) && (this.initSearch())}>
                 <div className="sidenav">
-                    <a href="#" className="close-nav"><i class="fas fa-times"></i></a>
+                    <a href="#" className="close-nav"><i className="fas fa-times"></i></a>
                     <div className="direction-display"></div>
                 </div>
-                <div className="nav-container"><button className="open-nav" title="Directions"><i class="fas fa-directions"></i></button></div>
+                <div className="nav-container"><button className="open-nav" title="Directions"><i className="fas fa-directions"></i></button></div>
                 <div className="main-content">
                     <div className="search-btn-container">
                         <Link to="/" className="goback-btn" onClick={() => this.clearAll()}><i className="fas fa-chevron-left"></i></Link>
-                        <input className="search-input" type="text" placeholder="Click on the draw icon and define the region" />
+                        <input className="search-input" type="text" placeholder="Click on the draw icon below and define the region" />
                         <button className="search-btn"><i className="fas fa-search"></i></button>
                     </div>
                     <div className="buttons-container">

@@ -61,9 +61,19 @@ class LandingPage extends React.Component {
     render() {
         return (
             <div className="landing-page">
-                <h3>Landing Page</h3>
-                <input type="text" className="address-input" placeholder="Search city" onFocus={() => (!lCalled) && (this.initLanding())} />
-                <button className="-btn" onClick={() => this.zoomToArea()}>Search</button>
+                <div className="header-ctn animated slideInDown fast"><h1 className="header">NAVIGO</h1></div>
+                <div className="hero-content">
+                    <div className="hero-content-main">Your Personal Navigator<i className="fas fa-route"></i></div>
+                    <div className="hero-content-sub">
+                        <div className="hero-content-sub-img"></div>
+                        <span className="hero-content-sub-info">TO PLACES AROUND YOU</span>
+                    </div>
+                </div>
+                <div className="address-ctn">
+                    <input type="text" className="address-input" placeholder="Search city" onFocus={() => (!lCalled) && (this.initLanding())} />
+                    <button className="zoom-btn" onClick={() => this.zoomToArea()}><i className="fas fa-search"></i></button>
+                </div>
+                <div className="footer">Crafted with <i className="fas fa-heart"></i> by Fateh</div>
             </div>
         );
     }
