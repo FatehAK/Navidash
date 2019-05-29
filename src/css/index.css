@@ -689,11 +689,11 @@ li {
     }
 
     .btn-street {
-        margin: 5px 0 0 0 !important;
+        margin: 5px 0 6px 0 !important;
     }
 
     .btn-route {
-        margin: 5px 0 0 8px !important;
+        margin: 5px 0 6px 8px !important;
     }
 
     .info-img-container {
@@ -738,7 +738,7 @@ li {
     }
 
     .buttons:not(:last-child):nth-last-child(3) > i {
-        margin: 10.3px 10px 15px 13px !important;
+        margin: 10.8px 10px 15px 13px !important;
         font-size: 1em !important;
     }
 }
@@ -755,11 +755,11 @@ li {
     }
 
     .btn-street {
-        margin: 5px 0 0 0 !important;
+        margin: 5px 0 6px 0 !important;
     }
 
     .btn-route {
-        margin: 5px 0 0 8px !important;
+        margin: 5px 0 6px 8px !important;
     }
 
     .info-head {
