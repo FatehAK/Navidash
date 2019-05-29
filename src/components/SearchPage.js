@@ -615,7 +615,7 @@ class App extends React.Component {
                                 hideRouteList: true,
                                 polylineOptions: {
                                     strokeColor: '#fe6347',
-                                    strokeWeight: 3.4,
+                                    strokeWeight: 3.5,
                                     editable: false,
                                     zIndex: 10,
                                 }
