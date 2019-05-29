@@ -4,6 +4,7 @@ import React from 'react';
 import { Route } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import SearchPage from './SearchPage';
+import Style from './mapstyle.json';
 
 class App extends React.Component {
 
@@ -19,7 +20,7 @@ class App extends React.Component {
         //load the maps script asynchronously and give reference to the global callback
         const ref = document.getElementsByTagName("script")[0];
         const script = document.createElement("script");
-        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDuqhcnldSASlaMVsvLvMc8DRewy0FzX4o&libraries=places,drawing,geometry&v=3&callback=initMap';
+        script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyDuqhcnldSASlaMVsvLvMc8DRewy0FzX4o&libraries=places,drawing,geometry&v=3&language=en&region=in&callback=initMap';
         script.async = true;
         ref.parentNode.insertBefore(script, ref);
     }
@@ -30,6 +31,7 @@ class App extends React.Component {
 
         window.myMap = new google.maps.Map(mapContainer, {
             zoom: 6,
+            styles: Style,
             mapTypeControl: false,
             fullscreenControl: false,
             streetViewControl: false,

@@ -1,6 +1,7 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable no-undef */
 import React from 'react';
+import Swal from 'sweetalert2';
 
 //make sure the init function is called only once
 let lCalled = false;
@@ -21,7 +22,7 @@ class LandingPage extends React.Component {
         zoomAutoComplete.addListener('place_changed', function() {
             const place = this.getPlace();
             if (!place.geometry) {
-                alert("Location not found");
+                Swal.fire('Location not found try a different area?');
             }
             else {
                 myMap.setCenter(place.geometry.location);
@@ -50,11 +51,11 @@ class LandingPage extends React.Component {
                     lCalled = false;
                     self.props.historyObj.push('/search');
                 } else {
-                    alert('Location not found');
+                    Swal.fire('Location not found try a different area?');
                 }
             });
         } else {
-            alert('Enter your city');
+            Swal.fire('Please enter your city first');
         }
     }
 
@@ -65,7 +66,7 @@ class LandingPage extends React.Component {
                 <div className="hero-content">
                     <div className="hero-content-main">Your Personal Navigator<i className="fas fa-route"></i></div>
                     <div className="hero-content-sub">
-                        <div className="hero-content-sub-img"></div>
+                        <div className="hero-content-sub-img animated rotateIn faster"></div>
                         <span className="hero-content-sub-info">TO PLACES AROUND YOU</span>
                     </div>
                 </div>

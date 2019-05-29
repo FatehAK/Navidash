@@ -5,6 +5,9 @@
 /* eslint-disable no-undef */
 import React from 'react';
 import { Link } from 'react-router-dom';
+import Swal from 'sweetalert2';
+import placeIcon from '../img/place.svg';
+import originIcon from '../img/origin.svg';
 
 //these variables include nested objects
 let polygon = null;
@@ -18,6 +21,8 @@ let routeMarker;
 let directionsDisplay;
 
 let drawingManager;
+
+let searchBox;
 
 //for ensuring functions are called only once
 let carousel = false;
@@ -49,6 +54,19 @@ class App extends React.Component {
     initSearch() {
         sCalled = true
         let self = this;
+
+        //for the searchbox
+        const searchInput = document.querySelector('.search-input');
+        searchBox = new google.maps.places.SearchBox(searchInput);
+        searchBox.setBounds(myMap.getBounds());
+
+        searchBox.addListener('places_changed', function() {
+            self.searchBoxPlaces(searchBox);
+        });
+
+        const searchBtn = document.querySelector('.search-btn');
+        searchBtn.addEventListener('click', self.textSearchPlaces);
+
         //for drawing polylines on the map
         if (!drawingManager) {
             drawingManager = new google.maps.drawing.DrawingManager({
@@ -61,10 +79,10 @@ class App extends React.Component {
                     ]
                 },
                 polygonOptions: {
-                    fillColor: '#202020',
-                    fillOpacity: 0.2,
-                    strokeWeight: 3,
-                    strokeColor: '#3f3d55',
+                    fillColor: '#262633',
+                    fillOpacity: 0.125,
+                    strokeWeight: 3.5,
+                    strokeColor: '#585577',
                     clickable: false,
                     editable: true,
                 }
@@ -93,10 +111,6 @@ class App extends React.Component {
         clearBtn.addEventListener('click', function() {
             self.clearAll();
         });
-
-        //for the place search button
-        const searchBtn = document.querySelector('.search-btn');
-        searchBtn.addEventListener('click', self.textSearchPlaces);
 
         //for sidebar navigation
         const openNav = document.querySelector('.open-nav');
@@ -183,11 +197,13 @@ class App extends React.Component {
 
     //calculates the bounds of the polygon
     getPolyBounds() {
-        let polyBounds = new google.maps.LatLngBounds();
-        polygon.getPath().forEach(function(element) {
-            polyBounds.extend(element);
-        });
-        return polyBounds;
+        if (polygon) {
+            let polyBounds = new google.maps.LatLngBounds();
+            polygon.getPath().forEach(function(element) {
+                polyBounds.extend(element);
+            });
+            return polyBounds;
+        }
     }
 
     //draw the polygon on the map
@@ -207,15 +223,12 @@ class App extends React.Component {
 
             //searchbox
             const searchInput = document.querySelector('.search-input');
+            searchInput.value = '';
             searchInput.setAttribute('placeholder', 'Search places eg. pizza, salon, rentals');
 
-            let searchBox = new google.maps.places.SearchBox(searchInput);
+            //set the bounds of searchbox to the polygon
             searchBox.setBounds(self.getPolyBounds());
 
-            //this listener if for when the users select the place from the picklist
-            searchBox.addListener('places_changed', function() {
-                self.searchBoxPlaces(searchBox);
-            });
             //redo the search if the polygon is edited
             polygon.getPath().addListener('set_at', function() {
                 if (searchInput.value) {
@@ -230,82 +243,40 @@ class App extends React.Component {
         });
     }
 
-    //search for markers in the polygon
-    searchInPolygon() {
-        //determines whether the location is found or not
-        let found = false;
-        for (let i = 0; i < placeMarkers.length; i++) {
-            //check if the polygon encolses any markers
-            if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
-                found = true;
-                //display the enclosed markers
-                placeMarkers[i].setMap(myMap);
-            } else {
-                //show atmost one marker even if its out of bounds
-                if (placeMarkers.length === 1) {
-                    found = true;
-                    placeMarkers[0].setMap(myMap);
-                } else {
-                    //hide the rest
-                    myMap.fitBounds(this.getPolyBounds());
-                    placeMarkers[i].setMap(null);
-                }
-            }
-        }
-        if (!found) {
-            //this alert occurs too fast so slow it down for polygon editing to complete
-            setTimeout(() => alert('Please expand your selection or select new area'), 600);
-        }
-    }
-
     //function that handles the suggested place
     searchBoxPlaces(searchBox) {
-        if (polygon) {
-            //hide any place markers already set
-            this.hideMarkers();
-            //we get places from the searchbox
-            let places = searchBox.getPlaces();
-            //we create markers for the places
-            this.createMarkersForPlaces(places);
-            if (places.length === 0) {
-                alert('No places found');
-            }
-        } else {
-            const searchInput = document.querySelector('.search-input');
-            searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
-            searchInput.value = '';
-            alert('Please select area first');
+        //hide any place markers already set
+        this.hideMarkers();
+        //we get places from the searchbox
+        let places = searchBox.getPlaces();
+        //we create markers for the places
+        this.createMarkersForPlaces(places);
+        if (places.length === 0) {
+            Swal.fire('Place not found maybe try again with an new place?');
         }
     }
 
     //display new places on resizing the polygon or on btn click
     textSearchPlaces() {
         let self = this;
-        if (polygon) {
-            //hide any place markers already set
-            self.hideMarkers();
-            const placesService = new google.maps.places.PlacesService(myMap);
-            //initiate the place search
-            let query = document.querySelector('.search-input').value
-            if (query) {
-                placesService.textSearch({
-                    query: query,
-                    bounds: self.getPolyBounds()
-                }, function(results, status) {
-                    if (status === google.maps.places.PlacesServiceStatus.OK) {
-                        self.createMarkersForPlaces(results);
-                    } else {
-                        alert('No places found');
-                    }
-                });
-            } else {
-                alert('Enter search query');
-            }
+        //hide any place markers already set
+        self.hideMarkers();
+        const placesService = new google.maps.places.PlacesService(myMap);
+        //initiate the place search
+        let query = document.querySelector('.search-input').value
+        if (query) {
+            placesService.textSearch({
+                query: query,
+                bounds: self.getPolyBounds()
+            }, function(results, status) {
+                if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    self.createMarkersForPlaces(results);
+                } else {
+                    Swal.fire('Place not found maybe try again with an new place?');
+                }
+            });
         } else {
-            const searchInput = document.querySelector('.search-input');
-            searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
-            searchInput.value = '';
-            alert('Please select area first');
+            Swal.fire('Please enter search query first');
         }
     }
 
@@ -315,19 +286,18 @@ class App extends React.Component {
         //set marker bounds
         let bounds = new google.maps.LatLngBounds();
 
+        const image = {
+            url: placeIcon,
+            //This marker is 36 pixels wide by 36 pixels high.
+            scaledSize: new google.maps.Size(36, 36),
+        };
+
         for (let i = 0; i < places.length; i++) {
             let place = places[i];
-            let icon = {
-                url: place.icon,
-                size: new google.maps.Size(35, 35),
-                origin: new google.maps.Point(0, 0),
-                anchor: new google.maps.Point(15, 34),
-                scaledSize: new google.maps.Size(25, 25)
-            };
 
             //create a marker for each place.
             let marker = new google.maps.Marker({
-                icon: icon,
+                icon: image,
                 title: place.name,
                 position: place.geometry.location,
                 id: place.place_id,
@@ -335,7 +305,6 @@ class App extends React.Component {
             });
 
             placeMarkers.push(marker);
-
             //creating a shared place info window
             placeInfoWindow = new google.maps.InfoWindow();
             marker.addListener('click', function() {
@@ -363,7 +332,37 @@ class App extends React.Component {
         myMap.setZoom(14);
 
         //initiate the search once markers are added to array
-        this.searchInPolygon();
+        if (polygon) {
+            this.searchInPolygon();
+        }
+    }
+
+    //search for markers in the polygon
+    searchInPolygon() {
+        //determines whether the location is found or not
+        let found = false;
+        for (let i = 0; i < placeMarkers.length; i++) {
+            //check if the polygon encolses any markers
+            if (google.maps.geometry.poly.containsLocation(placeMarkers[i].position, polygon)) {
+                found = true;
+                //display the enclosed markers
+                placeMarkers[i].setMap(myMap);
+            } else {
+                //show atmost one marker even if its out of bounds
+                if (placeMarkers.length === 1) {
+                    found = true;
+                    placeMarkers[0].setMap(myMap);
+                } else {
+                    //hide the rest
+                    myMap.fitBounds(this.getPolyBounds());
+                    placeMarkers[i].setMap(null);
+                }
+            }
+        }
+        if (!found) {
+            //this alert occurs too fast so slow it down for polygon editing to complete
+            setTimeout(() => Swal.fire('Please expand your selection or select new area'), 500);
+        }
     }
 
     //get more details on a particular place whose marker is clicked
@@ -567,15 +566,21 @@ class App extends React.Component {
 
     //function that actually creates the marker
     createMarker(place, infoWindow, evt) {
+        const image = {
+            url: originIcon,
+            //This marker is 36 pixels wide by 36 pixels high.
+            scaledSize: new google.maps.Size(36, 36),
+        };
+
         routeMarker = new google.maps.Marker({
             position: evt.latLng,
             map: myMap,
+            icon: image
         });
         this.getRoute(place, infoWindow);
     }
 
     getRoute(place, infoWindow) {
-        let self = this;
         if (routeMarker) {
             //remove marker on clicking it
             google.maps.event.addListenerOnce(routeMarker, 'click', function() {
@@ -585,7 +590,6 @@ class App extends React.Component {
                     routeMarker = null;
                     if (directionsDisplay) {
                         directionsDisplay.setMap(null);
-                        directionsDisplay.setPanel(null);
                         directionsDisplay = null;
                     }
                 }
@@ -611,7 +615,7 @@ class App extends React.Component {
                                 hideRouteList: true,
                                 polylineOptions: {
                                     strokeColor: '#fe6347',
-                                    strokeWeight: 4,
+                                    strokeWeight: 3.4,
                                     editable: false,
                                     zIndex: 10,
                                 }
@@ -636,7 +640,7 @@ class App extends React.Component {
                                 }
                             }
                         } else {
-                            alert('Unable to get direction for that location');
+                            Swal.fire('Unable to get direction for that location');
                         }
                     });
                 });
@@ -651,9 +655,9 @@ class App extends React.Component {
                     <a href="#" className="close-nav"><i className="fas fa-times"></i></a>
                     <div className="direction-display"></div>
                 </div>
-                <div className="nav-container"><button className="open-nav" title="Directions"><i className="fas fa-directions"></i></button></div>
+                <div className="nav-container"><button className="open-nav animated slideInLeft faster" title="Directions"><i className="fas fa-directions"></i></button></div>
                 <div className="main-content">
-                    <div className="search-btn-container">
+                    <div className="search-btn-container animated fadeInRight faster">
                         <Link to="/" className="goback-btn" onClick={() => this.clearAll()}><i className="fas fa-chevron-left"></i></Link>
                         <input className="search-input" type="text" placeholder="Click on the draw icon below and define the region" />
                         <button className="search-btn"><i className="fas fa-search"></i></button>

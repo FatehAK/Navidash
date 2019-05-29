@@ -962,3 +962,30 @@ li {
 ::-webkit-scrollbar-thumb {
     background-color: var(--primary-color);
 }
+
+/* modal styles */
+.swal2-confirm {
+    background: var(--secondary-color) !important;
+    border: none !important;
+    border-left-color: #fff !important;
+    padding: 6px 18px !important;
+    font-size: 0.9em !important;
+    border-radius: 5px !important;
+}
+
+.swal2-confirm:hover {
+    background: var(--primary-color) !important;
+}
+
+.swal2-styled:focus {
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+
+.swal2-title {
+    font-size: 1em !important;
+    font-weight: normal !important;
+    letter-spacing: 0.05em;
+    font-stretch: expanded;
+    margin-top: 10px;
+}
