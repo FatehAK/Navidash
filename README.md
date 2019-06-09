@@ -6,7 +6,7 @@ View the site live - https://navigo.netlify.com
 
 ### Tech Stack
 * React JS
-* React Router for managing routes.
+* React Router for managing routes
 * Google Maps API
 * Animate.css
 * Netlify for hosting
