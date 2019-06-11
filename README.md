@@ -15,7 +15,7 @@ View the site live - https://navigo.netlify.com
 * Get place info such as address, phone, rating, photos and even reviews.
 * Use the nearest Streetview to checkout the surroundings.
 * Calculate the distance and time to reach the place.
-* Get directions to your chosen place.
+* Get directions to your chosen place from your home.
 * Fully responsive to be used on mobile devices as well.
 
 ### Local Development 
