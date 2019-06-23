@@ -1,6 +1,6 @@
 # Navigo
 
-Navigo is your navigational assistant that takes your places search to whole new level by adding drawing capabilities to the map and searching for places within it. It makes finding rentals in a particular area or even searching for matching restaurants an easy process 
+Navigo is your navigational assistant that takes your places search to whole new level by adding drawing capabilities to the map and searching for places within it. It makes finding rentals in a particular area or even searching for matching restaurants an easy process. 
 
 View the site live - https://navigo.netlify.com
 
