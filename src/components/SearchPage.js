@@ -549,11 +549,13 @@ class SearchPage extends React.Component {
                             }
 
                             const dirBtn = document.querySelector('.direction-btn');
-                            dirBtn.addEventListener('click', function() {
-                                self.childRef.current.directionRef.current.innerHTML = '';
-                                directionsDisplay.setPanel(self.childRef.current.directionRef.current);
-                                self.childRef.current.openSide();
-                            });
+                            if (dirBtn) {
+                                dirBtn.addEventListener('click', function() {
+                                    self.childRef.current.directionRef.current.innerHTML = '';
+                                    directionsDisplay.setPanel(self.childRef.current.directionRef.current);
+                                    self.childRef.current.openSide();
+                                });
+                            }
 
                         } else {
                             Swal.fire('Unable to get direction for that location');
