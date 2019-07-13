@@ -77,6 +77,14 @@ class SearchPage extends React.Component {
         }
     };
 
+    //hiding our markers and cleaning the array
+    hideMarkers = () => {
+        for (let i = 0; i < placeMarkers.length; i++) {
+            placeMarkers[i].setMap(null);
+        }
+        placeMarkers = [];
+    };
+
     //initialize the drawing mode
     initDrawing = () => {
         if (!drawingManager) {
@@ -115,15 +123,55 @@ class SearchPage extends React.Component {
         }
     };
 
-    //hiding our markers and cleaning the array
-    hideMarkers = () => {
-        for (let i = 0; i < placeMarkers.length; i++) {
-            placeMarkers[i].setMap(null);
-        }
-        placeMarkers = [];
+    //draw the polygon on the map
+    drawPolygon = (drawingManager) => {
+        let self = this;
+
+        google.maps.event.addListenerOnce(drawingManager, 'overlaycomplete', function(evt) {
+            //once drawing is complete we go back to free hand movement mode
+            drawingManager.setDrawingMode(null);
+            drawingManager.setOptions({
+                drawingControl: false
+            });
+
+            //creating an editable polygon
+            polygon = evt.overlay;
+            polygon.setEditable(true);
+
+            //set the bounds of searchbox to the polygon
+            const searchInput = self.searchInputRef.current;
+            searchInput.value = '';
+            searchInput.setAttribute('placeholder', 'Search for places eg. pizza, salon, rentals');
+            if (searchBox) {
+                searchBox.setBounds(self.getPolyBounds());
+            }
+
+            //redo the search if the polygon is edited
+            polygon.getPath().addListener('set_at', function() {
+                if (searchInput.value) {
+                    self.textSearchPlaces();
+                }
+            });
+            polygon.getPath().addListener('insert_at', function() {
+                if (searchInput.value) {
+                    self.textSearchPlaces();
+                }
+            });
+        });
     };
 
-    //clear all data
+    //calculates the bounds of the polygon
+    getPolyBounds = () => {
+        if (polygon) {
+            let polyBounds = new google.maps.LatLngBounds();
+            polygon.getPath().forEach((element) => {
+                polyBounds.extend(element);
+            });
+            return polyBounds;
+        }
+    };
+
+    //clear all objects on clicking back or clear btn
     clearAll = () => {
         if (polygon) {
             google.maps.event.clearListeners(polygon, 'click');
@@ -149,68 +197,7 @@ class SearchPage extends React.Component {
         this.childRef.current.closeSide();
     };
 
-    //reset our state on clear
-    resetState = () => {
-        if (placeInfoWindow) {
-            google.maps.event.clearListeners(placeInfoWindow, 'domready');
-        }
-        if (directionsDisplay) {
-            directionsDisplay.setMap(null);
-            directionsDisplay = null;
-        }
-    };
-
-    //calculates the bounds of the polygon
-    getPolyBounds = () => {
-        if (polygon) {
-            let polyBounds = new google.maps.LatLngBounds();
-            polygon.getPath().forEach(function(element) {
-                polyBounds.extend(element);
-            });
-            return polyBounds;
-        }
-    };
-
-    //draw the polygon on the map
-    drawPolygon = (drawingManager) => {
-        let self = this;
-
-        google.maps.event.addListenerOnce(drawingManager, 'overlaycomplete', function(evt) {
-            //once drawing is complete we go back to free hand movement mode
-            drawingManager.setDrawingMode(null);
-            drawingManager.setOptions({
-                drawingControl: false
-            });
-
-            //creating an editable polygon
-            polygon = evt.overlay;
-            polygon.setEditable(true);
-
-            //searchbox
-            const searchInput = self.searchInputRef.current;
-            searchInput.value = '';
-            searchInput.setAttribute('placeholder', 'Search for places eg. pizza, salon, rentals');
-
-            //set the bounds of searchbox to the polygon
-            if (searchBox) {
-                searchBox.setBounds(self.getPolyBounds());
-            }
-
-            //redo the search if the polygon is edited
-            polygon.getPath().addListener('set_at', function() {
-                if (searchInput.value) {
-                    self.textSearchPlaces();
-                }
-            });
-            polygon.getPath().addListener('insert_at', function() {
-                if (searchInput.value) {
-                    self.textSearchPlaces();
-                }
-            });
-        });
-    }
-
-    //function that creates markers for each place found
+    //create markers for each place found
     createMarkersForPlaces = (places) => {
         let self = this;
         //set marker bounds
@@ -263,7 +250,7 @@ class SearchPage extends React.Component {
         if (polygon) {
             this.searchInPolygon();
         }
-    }
+    };
 
     //search for markers in the polygon
     searchInPolygon = () => {
@@ -291,7 +278,7 @@ class SearchPage extends React.Component {
             //this popup occurs too fast so slow it down for polygon editing to complete
             setTimeout(() => Swal.fire('Please expand your selection or select new area'), 500);
         }
-    }
+    };
 
     //get place details on marker click
     getPlacesDetails = (marker, infoWindow) => {
@@ -311,7 +298,7 @@ class SearchPage extends React.Component {
         const service = new google.maps.places.PlacesService(myMap);
         service.getDetails({
             placeId: marker.id
-        }, function(place, status) {
+        }, (place, status) => {
             if (status === google.maps.places.PlacesServiceStatus.OK) {
                 infoWindow.marker = marker;
 
@@ -338,7 +325,18 @@ class SearchPage extends React.Component {
                 });
             }
         });
-    }
+    };
+
+    //reset on closing infoWindow
+    resetState = () => {
+        if (placeInfoWindow) {
+            google.maps.event.clearListeners(placeInfoWindow, 'domready');
+        }
+        if (directionsDisplay) {
+            directionsDisplay.setMap(null);
+            directionsDisplay = null;
+        }
+    };
 
     //building the infowindow with place details
     populateInfoWindow = (place, infoWindow) => {
@@ -409,7 +407,7 @@ class SearchPage extends React.Component {
         }
     };
 
-    //functions that embeds the street view
+    //initialize the street view
     initStreetView = (place, infoWindow) => {
         let self = this;
         const streetBtn = document.querySelector('.btn-street');
@@ -455,7 +453,7 @@ class SearchPage extends React.Component {
         }
     };
 
-    //function that handles whether marker should be created or not
+    //check whether new destination marker can be created
     checkMarker = (place, infoWindow) => {
         let self = this;
         const btnRoute = document.querySelector('.btn-route');
