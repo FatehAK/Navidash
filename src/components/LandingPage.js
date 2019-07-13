@@ -3,22 +3,24 @@
 import React from 'react';
 import Swal from 'sweetalert2';
 
-//make sure the init function is called only once
-let lCalled = false;
-
 class LandingPage extends React.Component {
+    //reference to DOM node (address-input)
+    addressRef = React.createRef();
 
-    initLanding() {
-        lCalled = true;
-        let self = this;
+    componentDidMount() {
+        //make sure our listener function is called only once
+        this.addressRef.current.addEventListener('focus', this.initLanding, { once: true });
+    }
 
+    initLanding = () => {
         //our places autocomplete
-        const zoomAutoComplete = new google.maps.places.Autocomplete(document.querySelector('.address-input'));
+        const zoomAutoComplete = new google.maps.places.Autocomplete(this.addressRef.current);
         zoomAutoComplete.setComponentRestrictions({
             country: ['IN']
         });
 
         //on place changed we zoom and display the map
+        let self = this;
         zoomAutoComplete.addListener('place_changed', function() {
             const place = this.getPlace();
             if (!place.geometry) {
@@ -27,29 +29,26 @@ class LandingPage extends React.Component {
             else {
                 myMap.setCenter(place.geometry.location);
                 myMap.setZoom(14);
-                lCalled = false;
                 self.props.historyObj.push('/search');
             }
         });
-    }
+    };
 
     //zoom on the area specified
-    zoomToArea() {
-        let self = this;
+    zoomToArea = () => {
         const geocoder = new google.maps.Geocoder();
-        let address = document.querySelector('.address-input').value;
+        let address = this.addressRef.current.value;
         if (address) {
             geocoder.geocode({
                 address: address,
                 componentRestrictions: {
                     country: 'IN'
                 }
-            }, function(results, status) {
+            }, (results, status) => {
                 if (status === google.maps.GeocoderStatus.OK) {
                     myMap.setCenter(results[0].geometry.location);
                     myMap.setZoom(14);
-                    lCalled = false;
-                    self.props.historyObj.push('/search');
+                    this.props.historyObj.push('/search');
                 } else {
                     Swal.fire('Location not found try a different area?');
                 }
@@ -57,7 +56,7 @@ class LandingPage extends React.Component {
         } else {
             Swal.fire('Please enter your city first');
         }
-    }
+    };
 
     render() {
         return (
@@ -71,7 +70,7 @@ class LandingPage extends React.Component {
                     </div>
                 </div>
                 <div className="address-ctn">
-                    <input type="text" className="address-input" placeholder="Search city" onFocus={() => (!lCalled) && (this.initLanding())} />
+                    <input ref={this.addressRef} type="text" className="address-input" placeholder="Search city"/>
                     <button className="zoom-btn" onClick={() => this.zoomToArea()}><i className="fas fa-search"></i></button>
                 </div>
                 <div className="footer">Crafted with <i className="fas fa-heart"></i> by Fateh</div>

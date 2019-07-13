@@ -6,68 +6,79 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import Sidebar from './Sidebar';
 import placeIcon from '../img/place.svg';
 import originIcon from '../img/origin.svg';
 
-//these variables include nested objects
-let polygon = null;
-
+//global deeply nested objects
+let searchBox;
+let polygon;
+let drawingManager;
 let placeMarkers = [];
-
 let placeInfoWindow;
-
 let routeMarker;
-
 let directionsDisplay;
 
-let drawingManager;
-
-let searchBox;
-
-//for ensuring functions are called only once
-let carousel = false;
-
-let sCalled = false;
-
-let opened = false;
-
-class App extends React.Component {
-
-    constructor(props) {
-        super(props);
-        //retain object instance when used in the function
-        this.textSearchPlaces = this.textSearchPlaces.bind(this);
-    }
+class SearchPage extends React.Component {
+    //refs
+    searchInputRef = React.createRef();
+    childRef = React.createRef();
 
     componentDidMount() {
         let mapContainer = document.querySelector('.map-container');
         mapContainer.style.display = 'block';
+        this.searchInputRef.current.addEventListener('focus', this.suggestPlaces, { once: true });
     }
 
     componentWillUnmount() {
         let mapContainer = document.querySelector('.map-container');
         mapContainer.style.display = 'none';
-        sCalled = false;
         this.clearAll();
     }
 
-    initSearch() {
-        sCalled = true
+    //displays place suggestions
+    suggestPlaces = () => {
         let self = this;
-
-        //for the searchbox
-        const searchInput = document.querySelector('.search-input');
-        searchBox = new google.maps.places.SearchBox(searchInput);
+        searchBox = new google.maps.places.SearchBox(this.searchInputRef.current);
         searchBox.setBounds(myMap.getBounds());
 
         searchBox.addListener('places_changed', function() {
-            self.searchBoxPlaces(searchBox);
+            //hide existing markers
+            self.hideMarkers();
+            let places = searchBox.getPlaces();
+            //crate new markers
+            self.createMarkersForPlaces(places);
+            if (places.length === 0) {
+                Swal.fire('Place not found, try again with an new place?');
+            }
         });
+    };
 
-        const searchBtn = document.querySelector('.search-btn');
-        searchBtn.addEventListener('click', self.textSearchPlaces);
+    //displays places on btn click or polygon resize
+    textSearchPlaces = () => {
+        //hide existing markers
+        this.hideMarkers();
+        const placesService = new google.maps.places.PlacesService(myMap);
+        let query = this.searchInputRef.current.value;
+        if (query) {
+            placesService.textSearch({
+                query: query,
+                bounds: this.getPolyBounds()
+            }, (results, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK) {
+                    //create new markers
+                    this.createMarkersForPlaces(results);
+                } else {
+                    Swal.fire('Place not found, try again with an new place?');
+                }
+            });
+        } else {
+            Swal.fire('Please enter search query first');
+        }
+    };
 
-        //for drawing polylines on the map
+    //initialize the drawing mode
+    initDrawing = () => {
         if (!drawingManager) {
             drawingManager = new google.maps.drawing.DrawingManager({
                 drawingMode: google.maps.drawing.OverlayType.POLYGON,
@@ -88,63 +99,35 @@ class App extends React.Component {
                 }
             });
         }
-
-        const drawBtn = document.querySelector('.draw-btn');
-        drawBtn.addEventListener('click', function() {
-            //initialize drawing mode only if not already drawing
-            if (!drawingManager.map) {
-                //set initial drawing mode
-                drawingManager.setDrawingMode('polygon');
-                drawingManager.setOptions({
-                    drawingControl: true
-                });
-                drawingManager.setMap(myMap);
-                self.drawPolygon(drawingManager);
-            }
-            //goto bounds of poly on subsequent clicks
-            if (polygon) {
-                myMap.fitBounds(self.getPolyBounds());
-            }
-        });
-
-        const clearBtn = document.querySelector('.clear-btn');
-        clearBtn.addEventListener('click', function() {
-            self.clearAll();
-        });
-
-        //for sidebar navigation
-        const openNav = document.querySelector('.open-nav');
-        openNav.addEventListener('click', self.toogleSide);
-
-        const closeNav = document.querySelector('.close-nav');
-        closeNav.addEventListener('click', function() {
-            document.querySelector(".sidenav").style.width = "0";
-            document.getElementById("main").style.marginLeft = "0";
-            opened = false;
-        });
-
-        const directionCtn = document.querySelector('.direction-display');
-        directionCtn.innerHTML = '<p class="direction-para">Select route to display directions<p>';
-    }
-
-    //toggle the sidebar visibility
-    toogleSide() {
-        if (!opened) {
-            opened = true;
-            document.querySelector(".sidenav").style.width = "320px";
-            document.getElementById("main").style.marginLeft = "320px";
-        } else {
-            document.querySelector(".sidenav").style.width = "0";
-            document.getElementById("main").style.marginLeft = "0";
-            opened = false;
+        //initialize drawing mode only if not already drawing
+        if (!drawingManager.map) {
+            //set initial drawing mode
+            drawingManager.setDrawingMode('polygon');
+            drawingManager.setOptions({
+                drawingControl: true
+            });
+            drawingManager.setMap(myMap);
+            this.drawPolygon(drawingManager);
         }
-    }
+        //goto bounds of poly on subsequent clicks
+        if (polygon) {
+            myMap.fitBounds(this.getPolyBounds());
+        }
+    };
+
+    //hiding our markers and cleaning the array
+    hideMarkers = () => {
+        for (let i = 0; i < placeMarkers.length; i++) {
+            placeMarkers[i].setMap(null);
+        }
+        placeMarkers = [];
+    };
 
     //clear all data
-    clearAll() {
-        const searchInput = document.querySelector('.search-input');
-        searchInput.setAttribute('placeholder', 'Click on the draw icon below and define the region');
-        searchInput.value = '';
+    clearAll = () => {
+        if (polygon) {
+            google.maps.event.clearListeners(polygon, 'click');
+        }
         if (drawingManager) {
             if (drawingManager.map) {
                 drawingManager.setMap(null);
@@ -162,30 +145,12 @@ class App extends React.Component {
             routeMarker = null;
         }
         google.maps.event.clearListeners(myMap, 'click');
-        if (polygon) {
-            google.maps.event.clearListeners(polygon, 'click');
-        }
         this.resetState();
-        if (opened) {
-            document.querySelector(".sidenav").style.width = "0";
-            document.getElementById("main").style.marginLeft = "0";
-            opened = false;
-        }
-        const directionCtn = document.querySelector('.direction-display');
-        directionCtn.innerHTML = '<p class="direction-para">Select route to display directions<p>';
-    }
-
-    //hiding our markers and cleaning the array
-    hideMarkers() {
-        for (let i = 0; i < placeMarkers.length; i++) {
-            placeMarkers[i].setMap(null);
-        }
-        placeMarkers = [];
-    }
+        this.childRef.current.closeSide();
+    };
 
     //reset our state on clear
-    resetState() {
-        carousel = false;
+    resetState = () => {
         if (placeInfoWindow) {
             google.maps.event.clearListeners(placeInfoWindow, 'domready');
         }
@@ -193,10 +158,10 @@ class App extends React.Component {
             directionsDisplay.setMap(null);
             directionsDisplay = null;
         }
-    }
+    };
 
     //calculates the bounds of the polygon
-    getPolyBounds() {
+    getPolyBounds = () => {
         if (polygon) {
             let polyBounds = new google.maps.LatLngBounds();
             polygon.getPath().forEach(function(element) {
@@ -204,10 +169,10 @@ class App extends React.Component {
             });
             return polyBounds;
         }
-    }
+    };
 
     //draw the polygon on the map
-    drawPolygon(drawingManager) {
+    drawPolygon = (drawingManager) => {
         let self = this;
 
         google.maps.event.addListenerOnce(drawingManager, 'overlaycomplete', function(evt) {
@@ -222,12 +187,14 @@ class App extends React.Component {
             polygon.setEditable(true);
 
             //searchbox
-            const searchInput = document.querySelector('.search-input');
+            const searchInput = self.searchInputRef.current;
             searchInput.value = '';
-            searchInput.setAttribute('placeholder', 'Search places eg. pizza, salon, rentals');
+            searchInput.setAttribute('placeholder', 'Search for places eg. pizza, salon, rentals');
 
             //set the bounds of searchbox to the polygon
-            searchBox.setBounds(self.getPolyBounds());
+            if (searchBox) {
+                searchBox.setBounds(self.getPolyBounds());
+            }
 
             //redo the search if the polygon is edited
             polygon.getPath().addListener('set_at', function() {
@@ -243,52 +210,15 @@ class App extends React.Component {
         });
     }
 
-    //function that handles the suggested place
-    searchBoxPlaces(searchBox) {
-        //hide any place markers already set
-        this.hideMarkers();
-        //we get places from the searchbox
-        let places = searchBox.getPlaces();
-        //we create markers for the places
-        this.createMarkersForPlaces(places);
-        if (places.length === 0) {
-            Swal.fire('Place not found maybe try again with an new place?');
-        }
-    }
-
-    //display new places on resizing the polygon or on btn click
-    textSearchPlaces() {
-        let self = this;
-        //hide any place markers already set
-        self.hideMarkers();
-        const placesService = new google.maps.places.PlacesService(myMap);
-        //initiate the place search
-        let query = document.querySelector('.search-input').value
-        if (query) {
-            placesService.textSearch({
-                query: query,
-                bounds: self.getPolyBounds()
-            }, function(results, status) {
-                if (status === google.maps.places.PlacesServiceStatus.OK) {
-                    self.createMarkersForPlaces(results);
-                } else {
-                    Swal.fire('Place not found maybe try again with an new place?');
-                }
-            });
-        } else {
-            Swal.fire('Please enter search query first');
-        }
-    }
-
-    //function that creates markers for each place found in places search
-    createMarkersForPlaces(places) {
+    //function that creates markers for each place found
+    createMarkersForPlaces = (places) => {
         let self = this;
         //set marker bounds
         let bounds = new google.maps.LatLngBounds();
 
         const image = {
             url: placeIcon,
-            //This marker is 36 pixels wide by 36 pixels high.
+            //36 pixels wide by 36 pixels high
             scaledSize: new google.maps.Size(36, 36),
         };
 
@@ -308,7 +238,7 @@ class App extends React.Component {
             //creating a shared place info window
             placeInfoWindow = new google.maps.InfoWindow();
             marker.addListener('click', function() {
-                //avoid repeated opening of the placeInfoWindow
+                //avoid repeated opening of the InfoWindow
                 if (placeInfoWindow.marker !== this) {
                     bounds.extend(this.position);
                     myMap.fitBounds(bounds);
@@ -317,9 +247,7 @@ class App extends React.Component {
                 }
                 //clearing the set listeners
                 self.resetState();
-                document.querySelector(".sidenav").style.width = "0";
-                document.getElementById("main").style.marginLeft = "0";
-                opened = false;
+                self.childRef.current.closeSide();
             });
 
             if (place.geometry.viewport) {
@@ -338,8 +266,8 @@ class App extends React.Component {
     }
 
     //search for markers in the polygon
-    searchInPolygon() {
-        //determines whether the location is found or not
+    searchInPolygon = () => {
+        //whether the location is found or not
         let found = false;
         for (let i = 0; i < placeMarkers.length; i++) {
             //check if the polygon encolses any markers
@@ -360,15 +288,15 @@ class App extends React.Component {
             }
         }
         if (!found) {
-            //this alert occurs too fast so slow it down for polygon editing to complete
+            //this popup occurs too fast so slow it down for polygon editing to complete
             setTimeout(() => Swal.fire('Please expand your selection or select new area'), 500);
         }
     }
 
-    //get more details on a particular place whose marker is clicked
-    getPlacesDetails(marker, infoWindow) {
+    //get place details on marker click
+    getPlacesDetails = (marker, infoWindow) => {
         let self = this;
-        //setting marker bounce effect
+        //marker bounce effect
         for (let i in placeMarkers) {
             //bounce only the marker which matches the current clicked marker
             if (placeMarkers[i].id === marker.id) {
@@ -393,9 +321,7 @@ class App extends React.Component {
                 //dynamically attach event listeners to btns once infowindow is ready
                 google.maps.event.addListener(infoWindow, 'domready', function() {
                     //for the photo carousel
-                    if (!carousel) {
-                        self.initCarousel(photos, currentIndex);
-                    }
+                    self.initCarousel(photos, currentIndex);
                     //for fetching the street view
                     self.initStreetView(place, infoWindow);
                     //for checking marker and displaying the route
@@ -408,16 +334,14 @@ class App extends React.Component {
                     marker.setAnimation(null);
                     //clearing the set listeners
                     self.resetState();
-                    document.querySelector(".sidenav").style.width = "0";
-                    document.getElementById("main").style.marginLeft = "0";
-                    opened = false;
+                    self.childRef.current.closeSide();
                 });
             }
         });
     }
 
-    //function that builds the infowindow
-    populateInfoWindow(place, infoWindow) {
+    //building the infowindow with place details
+    populateInfoWindow = (place, infoWindow) => {
         let innerHTML = `<div class="info-main">`;
 
         if (place.name) {
@@ -438,7 +362,7 @@ class App extends React.Component {
                 review.push(element.text.split(' ').splice(0, 30));
             });
             //pad reviews with > 30 words
-            let str = review[0].join(" ");
+            let str = review[0].join(' ');
             if (str.split(' ').length >= 30) {
                 innerHTML += `<div class="info-review">'${str.padEnd(str.length + 3, '.')}'<a class="info-link" href=${place.url} target="_blank">View more</a></div>`;
             } else {
@@ -460,14 +384,13 @@ class App extends React.Component {
 
         infoWindow.setContent(innerHTML);
         return [photos, currentIndex];
-    }
+    };
 
-    //function that implements the photo carousel
-    initCarousel(photos, currentIndex) {
+    //implementing the photo carousel
+    initCarousel = (photos, currentIndex) => {
         const nextImage = document.querySelector('.info-img-next');
         const prevImage = document.querySelector('.info-img-prev');
         const infoImg = document.querySelector('.info-img');
-
         if (nextImage && prevImage && infoImg) {
             nextImage.addEventListener('click', function() {
                 if (currentIndex < photos.length - 1) {
@@ -484,21 +407,20 @@ class App extends React.Component {
                 }
             });
         }
-    }
+    };
 
-    //functions that starts and embeds the street view
-    initStreetView(place, infoWindow) {
+    //functions that embeds the street view
+    initStreetView = (place, infoWindow) => {
         let self = this;
         const streetBtn = document.querySelector('.btn-street');
 
         if (streetBtn) {
             streetBtn.addEventListener('click', function() {
-                carousel = true;
                 let streetViewService = new google.maps.StreetViewService();
                 //get the nearest street view from position at radius of 50 meters
                 let radius = 50;
                 //this function is used to get panorama shot for the given location
-                streetViewService.getPanoramaByLocation(place.geometry.location, radius, function(data, status) {
+                streetViewService.getPanoramaByLocation(place.geometry.location, radius, (data, status) => {
                     if (status === google.maps.StreetViewStatus.OK) {
                         //the location
                         let location = data.location.latLng;
@@ -525,23 +447,21 @@ class App extends React.Component {
                     const backBtn = document.querySelector('.back-btn');
                     if (backBtn) {
                         backBtn.addEventListener('click', function() {
-                            carousel = false;
                             self.populateInfoWindow(place, infoWindow);
                         });
                     }
                 });
             });
         }
-    }
+    };
 
     //function that handles whether marker should be created or not
-    checkMarker(place, infoWindow) {
+    checkMarker = (place, infoWindow) => {
         let self = this;
         const btnRoute = document.querySelector('.btn-route');
 
         if (btnRoute) {
             btnRoute.addEventListener('click', function() {
-                carousel = true;
                 if (!routeMarker) {
                     infoWindow.setContent('Please select your origin');
                 } else {
@@ -562,13 +482,13 @@ class App extends React.Component {
                 }
             });
         }
-    }
+    };
 
-    //function that actually creates the marker
-    createMarker(place, infoWindow, evt) {
+    //create the destination marker
+    createMarker = (place, infoWindow, evt) => {
         const image = {
             url: originIcon,
-            //This marker is 36 pixels wide by 36 pixels high.
+            //36 pixels wide by 36 pixels high
             scaledSize: new google.maps.Size(36, 36),
         };
 
@@ -578,9 +498,11 @@ class App extends React.Component {
             icon: image
         });
         this.getRoute(place, infoWindow);
-    }
+    };
 
-    getRoute(place, infoWindow) {
+    //display the route to destination
+    getRoute = (place, infoWindow) => {
+        let self = this;
         if (routeMarker) {
             //remove marker on clicking it
             google.maps.event.addListenerOnce(routeMarker, 'click', function() {
@@ -605,7 +527,7 @@ class App extends React.Component {
                         origin: routeMarker.position,
                         destination: place.geometry.location,
                         travelMode: google.maps.TravelMode[mode]
-                    }, function(response, status) {
+                    }, (response, status) => {
                         if (status === google.maps.DirectionsStatus.OK) {
                             directionsDisplay = new google.maps.DirectionsRenderer({
                                 map: myMap,
@@ -621,24 +543,20 @@ class App extends React.Component {
                                 }
                             });
                             let result = response.routes[0].legs[0];
+
                             if (place.name && result.duration.text && result.distance.text) {
                                 infoWindow.setContent(`<span class="place-name">${place.name}</span> is <span class="place-duration">${result.duration.text}</span> away, at <span class="place-distance">${result.distance.text}</span><div class="direction-btn-ctn"><button class="direction-btn">Directions</button></div>`);
                             } else {
                                 infoWindow.setContent('<span>Route not available for this place');
                             }
-                            if (directionsDisplay) {
-                                const dirBtn = document.querySelector('.direction-btn');
-                                if (dirBtn) {
-                                    dirBtn.addEventListener('click', function() {
-                                        const directionCtn = document.querySelector('.direction-display');
-                                        directionCtn.innerHTML = "";
-                                        directionsDisplay.setPanel(document.querySelector('.direction-display'));
-                                        opened = true;
-                                        document.querySelector(".sidenav").style.width = "320px";
-                                        document.getElementById("main").style.marginLeft = "320px";
-                                    });
-                                }
-                            }
+
+                            const dirBtn = document.querySelector('.direction-btn');
+                            dirBtn.addEventListener('click', function() {
+                                self.childRef.current.directionRef.current.innerHTML = '';
+                                directionsDisplay.setPanel(self.childRef.current.directionRef.current);
+                                self.childRef.current.openSide();
+                            });
+
                         } else {
                             Swal.fire('Unable to get direction for that location');
                         }
@@ -646,25 +564,21 @@ class App extends React.Component {
                 });
             }
         }
-    }
+    };
 
     render() {
         return (
-            <div className="search-page" onFocus={() => (!sCalled) && (this.initSearch())}>
-                <div className="sidenav">
-                    <a href="#" className="close-nav"><i className="fas fa-times"></i></a>
-                    <div className="direction-display"></div>
-                </div>
-                <div className="nav-container"><button className="open-nav animated slideInLeft faster" title="Directions"><i className="fas fa-directions"></i></button></div>
+            <div className="search-page">
+                <Sidebar ref={this.childRef} />
                 <div className="main-content">
                     <div className="search-btn-container animated fadeInRight faster">
                         <Link to="/" className="goback-btn" onClick={() => this.clearAll()}><i className="fas fa-chevron-left"></i></Link>
-                        <input className="search-input" type="text" placeholder="Click on the draw icon below and define the region" />
-                        <button className="search-btn"><i className="fas fa-search"></i></button>
+                        <input ref={this.searchInputRef} className="search-input" type="text" placeholder="Click on the draw icon below and define the region" />
+                        <button className="search-btn" onClick={() => this.textSearchPlaces()}><i className="fas fa-search"></i></button>
                     </div>
                     <div className="buttons-container">
-                        <a href="#" className="buttons draw-btn" tooltip="Draw"><i className="fas fa-draw-polygon"></i></a>
-                        <a href="#" className="buttons clear-btn" tooltip="Clear"><i className="fas fa-undo"></i></a>
+                        <a href="#" className="buttons draw-btn" tooltip="Draw" onClick={() => this.initDrawing()}><i className="fas fa-draw-polygon"></i></a>
+                        <a href="#" className="buttons clear-btn" tooltip="Clear" onClick={() => this.clearAll()}><i className="fas fa-undo"></i></a>
                         <a className="buttons" href="#"></a>
                     </div>
                 </div>
@@ -673,4 +587,4 @@ class App extends React.Component {
     }
 }
 
-export default App;
+export default SearchPage;
