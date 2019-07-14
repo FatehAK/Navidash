@@ -25,9 +25,9 @@ class SearchPage extends React.Component {
     childRef = React.createRef();
 
     componentDidMount() {
+        this.searchInputRef.current.addEventListener('focus', this.suggestPlaces, { once: true });
         let mapContainer = document.querySelector('.map-container');
         mapContainer.style.display = 'block';
-        this.searchInputRef.current.addEventListener('focus', this.suggestPlaces, { once: true });
     }
 
     componentWillUnmount() {
@@ -77,7 +77,7 @@ class SearchPage extends React.Component {
         }
     };
 
-    //hiding our markers and cleaning the array
+    //hiding our markers on new place search
     hideMarkers = () => {
         for (let i = 0; i < placeMarkers.length; i++) {
             placeMarkers[i].setMap(null);
@@ -231,10 +231,11 @@ class SearchPage extends React.Component {
                     myMap.fitBounds(bounds);
                     myMap.setZoom(14);
                     self.getPlacesDetails(this, placeInfoWindow);
+                    //clearing the set listeners
+                    self.resetState();
+                    google.maps.event.clearListeners(myMap, 'click');
+                    self.childRef.current.closeSide();
                 }
-                //clearing the set listeners
-                self.resetState();
-                self.childRef.current.closeSide();
             });
 
             if (place.geometry.viewport) {
@@ -505,7 +506,6 @@ class SearchPage extends React.Component {
             //remove marker on clicking it
             google.maps.event.addListenerOnce(routeMarker, 'click', function() {
                 if (routeMarker) {
-                    infoWindow.setContent('Please select your origin');
                     routeMarker.setMap(null);
                     routeMarker = null;
                     if (directionsDisplay) {
@@ -552,7 +552,9 @@ class SearchPage extends React.Component {
                             if (dirBtn) {
                                 dirBtn.addEventListener('click', function() {
                                     self.childRef.current.directionRef.current.innerHTML = '';
-                                    directionsDisplay.setPanel(self.childRef.current.directionRef.current);
+                                    if (directionsDisplay) {
+                                        directionsDisplay.setPanel(self.childRef.current.directionRef.current);
+                                    }
                                     self.childRef.current.openSide();
                                 });
                             }
@@ -579,7 +581,7 @@ class SearchPage extends React.Component {
                     <div className="buttons-container">
                         <a href="#" className="buttons draw-btn" tooltip="Draw" onClick={() => this.initDrawing()}><i className="fas fa-draw-polygon"></i></a>
                         <a href="#" className="buttons clear-btn" tooltip="Clear" onClick={() => this.clearAll()}><i className="fas fa-undo"></i></a>
-                        <a className="buttons" href="#"></a>
+                        <a href="#" className="buttons"></a>
                     </div>
                 </div>
             </div>
