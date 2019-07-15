@@ -9,7 +9,7 @@ View the app live - https://navigo.netlify.com
 * React-Router
 * Google Maps API
 * SASS
-* PWA(Progressive Web App)
+* PWA (Progressive Web App)
 * Netlify for hosting
 
 ### Features 
