@@ -1,6 +1,6 @@
 # Navigo
 
-Navigo is your navigational assistant that makes searching for places quick and easy by adding drawing capabilities to the map. It makes finding rentals in a particular area or even searching for matching restaurants an easy process. The app is developed with **React.js** and **React-Router** for handling routes. The app uses **Google Maps API** under the hood and **Netlify** is used for hosting. 
+Navigo is your navigational assistant that makes searching for places quick and easy by adding drawing capabilities to the map. It makes finding rentals in a particular area or even searching for matching restaurants an easy process. The app is developed with **React.js**, **React-Router** for handling routes and **SASS** for styling. The app uses **Google Maps API** under the hood and **Netlify** is used for hosting. 
 
 View the app live - https://navigo.netlify.com
 
@@ -8,6 +8,7 @@ View the app live - https://navigo.netlify.com
 * React.js
 * React-Router
 * Google Maps API
+* SASS
 * Netlify for hosting
 
 ### Features 
