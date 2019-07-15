@@ -14,7 +14,7 @@ View the app live - https://navigo.netlify.com
 
 ### Features 
 * Draw on the map and restrict the search to those bounds.
-* Get place info such as address, phone, rating, photos and even reviews.
+* Get place info such as address, phone, rating, photos and reviews.
 * Use the nearest Streetview to checkout the surroundings.
 * Calculate the distance and time to reach the place.
 * Get directions to your chosen place from your home.
