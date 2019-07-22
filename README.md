@@ -13,12 +13,12 @@ View the app live - https://navigo.netlify.com
 * Netlify for hosting
 
 ### Features 
-* Draw on the map and restrict the search to those bounds.
+* Draw on the map and search for places within the region.
 * Get place info such as address, phone, rating, photos and reviews.
 * Use the nearest Streetview to checkout the surroundings.
 * Calculate the distance and time to reach the place.
 * Get directions to your chosen place from your home.
-* Fully responsive to be used on mobile devices as well.
+* Fully responsive with PWA capabilities for mobile devices.
 
 ### Local Development 
 To get started developing right away:
